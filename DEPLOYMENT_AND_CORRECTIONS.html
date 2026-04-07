@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azura: Deployment &amp; Corrections Documentation</title>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #222; }
+    h1 { border-bottom: 2px solid #333; padding-bottom: 0.3rem; }
+    h2 { margin-top: 1.8rem; color: #333; }
+    h3 { margin-top: 1.2rem; color: #444; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f5f5f5; }
+    code { background: #f0f0f0; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+    pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 4px; }
+    pre code { background: none; padding: 0; }
+    ul, ol { margin: 0.5rem 0; }
+    li { margin: 0.25rem 0; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
+    .pdf-note { background: #e8f4fd; border: 1px solid #b8daff; padding: 0.75rem 1rem; margin-bottom: 1.5rem; border-radius: 4px; font-size: 0.95rem; }
+    @media print { body { padding: 1rem; } .pdf-note { display: none; } }
+  </style>
+</head>
+<body>
+
+<div class="pdf-note"><strong>Save as PDF:</strong> Press <kbd>Ctrl+P</kbd> (or <kbd>Cmd+P</kbd> on Mac), then choose &quot;Save as PDF&quot; or &quot;Microsoft Print to PDF&quot; as the printer.</div>
+
+<h1>Azura: Deployment &amp; Corrections Documentation</h1>
+<p>This document describes the deployment setup, error corrections, and store submissions for the Azura e-commerce platform (backend, web frontend, and mobile apps).</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<ol>
+  <li>Project Overview</li>
+  <li>Backend (Railway)</li>
+  <li>Frontend Web (Vercel)</li>
+  <li>Mobile Apps (APK / App Store / Google Play)</li>
+  <li>Errors Fixed &amp; Corrections</li>
+  <li>Quick Reference</li>
+</ol>
+
+<hr>
+
+<h2>Project Overview</h2>
+<table>
+  <tr><th>Component</th><th>Stack</th><th>Deployment</th><th>Production URL</th></tr>
+  <tr><td><strong>Backend</strong></td><td>CodeIgniter 3, PHP 8.2, MySQL</td><td>Railway</td><td><code>https://azura-backend-production.up.railway.app</code></td></tr>
+  <tr><td><strong>Web Frontend</strong></td><td>Flutter (Dart)</td><td>Vercel</td><td><code>https://azura-frontend.vercel.app</code></td></tr>
+  <tr><td><strong>Mobile (Android)</strong></td><td>Flutter</td><td>APK / Google Play</td><td>—</td></tr>
+  <tr><td><strong>Mobile (iOS)</strong></td><td>Flutter</td><td>App Store</td><td>—</td></tr>
+</table>
+<p><strong>Repositories:</strong></p>
+<ul>
+  <li>Backend: <code>Dawinz/azura-backend</code> (GitHub) → auto-deploys to Railway</li>
+  <li>Frontend: <code>Dawinz/azura-frontend</code> (GitHub) → auto-deploys to Vercel</li>
+</ul>
+<p><strong>Backend API base URL</strong> (used by web and mobile):<br><code>https://azura-backend-production.up.railway.app</code></p>
+
+<hr>
+
+<h2>Backend (Railway)</h2>
+<h3>What Was Done</h3>
+<ul>
+  <li>Backend deployed on <strong>Railway</strong> with PHP 8.2 and MySQL.</li>
+  <li><strong>Clean URLs</strong> via <code>router.php</code> (no <code>index.php</code> in paths).</li>
+  <li><strong>API v1</strong> routes under <code>/v1/</code> for the Flutter app (auth, categories, products, etc.).</li>
+  <li><strong>CORS</strong> configured for web (localhost, Vercel) and kept consistent on errors.</li>
+  <li><strong>CSRF</strong> disabled for API routes so web/mobile can call the API without tokens.</li>
+  <li><strong>Login</strong> and <strong>register</strong> fixed (form data parsing, CORS, redirects).</li>
+</ul>
+<h3>Deployment Process</h3>
+<ol>
+  <li>Push to <code>main</code>: <code>git push origin main</code></li>
+  <li>Railway builds and deploys (Nixpacks, PHP server with <code>router.php</code>).</li>
+  <li>No manual deploy step; GitHub → Railway is automatic.</li>
+</ol>
+<h3>Key Backend Files</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>index.php</code></td><td>Entry point; CORS for <code>/v1/*</code>; error handling with JSON + CORS</td></tr>
+  <tr><td><code>router.php</code></td><td>Clean URLs for PHP built-in server</td></tr>
+  <tr><td><code>nixpacks.toml</code></td><td>Railway build/start (PHP 8.2, <code>router.php</code>)</td></tr>
+  <tr><td><code>application/controllers/V1.php</code></td><td>API v1 controller</td></tr>
+  <tr><td><code>application/config/routes.php</code></td><td>Routes for <code>/v1/*</code> and CSRF exclusions</td></tr>
+  <tr><td><code>application/helpers/custom_helper.php</code></td><td>Redirect logic; API requests excluded from redirect</td></tr>
+</table>
+<h3>Main API Endpoints (v1)</h3>
+<ul>
+  <li><code>POST /v1/user/register</code> — JSON body</li>
+  <li><code>POST /v1/auth/login</code> — form-urlencoded</li>
+  <li><code>GET /v1/create_user</code> — query params (utility)</li>
+  <li><code>GET /v1/category/list</code>, <code>GET /v1/product/list</code>, <code>GET /v1/product/detail_get?slug=...&user_id=...</code></li>
+</ul>
+
+<hr>
+
+<h2>Frontend Web (Vercel)</h2>
+<h3>What Was Done</h3>
+<ul>
+  <li>Flutter web app deployed on <strong>Vercel</strong>.</li>
+  <li><strong>GitHub:</strong> repo <code>Dawinz/azura-frontend</code>, branch <code>main</code>.</li>
+  <li><strong>Vercel:</strong> project <code>azura-frontend</code>; build = Flutter web.</li>
+  <li><strong>Build fix:</strong> Flutter PATH in <code>vercel.json</code> so <code>flutter</code> is available in both install and build steps.</li>
+</ul>
+<h3>Deployment Process</h3>
+<ol>
+  <li>Push to <code>main</code> on <code>Dawinz/azura-frontend</code>.</li>
+  <li>Vercel runs Install (clone Flutter SDK), then Build: <code>export PATH=".../_flutter/bin:$PATH" && flutter pub get && flutter build web --no-wasm-dry-run</code>, Output: <code>build/web</code>.</li>
+</ol>
+<h3>Key Frontend Files</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>lib/api/api_service.dart</code></td><td><code>_baseUrl</code> = Railway backend; all API calls</td></tr>
+  <tr><td><code>vercel.json</code></td><td>Build command, install command, output directory</td></tr>
+  <tr><td><code>web/index.html</code></td><td>Web entry</td></tr>
+  <tr><td><code>assets/logo/logo.jpg</code></td><td>App logo (Azura)</td></tr>
+</table>
+<h3>Live URLs</h3>
+<ul>
+  <li>Production: <code>https://azura-frontend.vercel.app</code></li>
+  <li>Backend: <code>https://azura-backend-production.up.railway.app</code></li>
+</ul>
+
+<hr>
+
+<h2>Mobile Apps (APK / App Store / Google Play)</h2>
+<h3>What Was Done</h3>
+<ul>
+  <li><strong>Android:</strong> Release APK built with <code>flutter build apk --release</code>. App prepared and <strong>uploaded to Google Play Store</strong>.</li>
+  <li><strong>iOS:</strong> App prepared and <strong>uploaded to App Store</strong>.</li>
+  <li><strong>Backend:</strong> Same Railway backend; <code>_baseUrl</code> in <code>api_service.dart</code>; Internet permission in Android manifest.</li>
+</ul>
+<h3>Android (APK / Google Play)</h3>
+<ul>
+  <li><strong>Build command:</strong> <code>flutter build apk --release</code></li>
+  <li><strong>Output:</strong> <code>azura-frontend/build/app/outputs/flutter-apk/app-release.apk</code></li>
+  <li><strong>Config:</strong> <code>android/app/build.gradle.kts</code> (applicationId <code>com.example.shop</code>), <code>AndroidManifest.xml</code> (INTERNET, ACCESS_NETWORK_STATE).</li>
+  <li><strong>Store:</strong> App prepared and submitted to Google Play.</li>
+</ul>
+<h3>iOS (App Store)</h3>
+<ul>
+  <li>App prepared and submitted to App Store.</li>
+  <li>iOS project under <code>azura-frontend/ios/</code>; same <code>api_service.dart</code> and backend URL.</li>
+</ul>
+<h3>Backend Connection (Mobile)</h3>
+<p>Single base URL in <code>lib/api/api_service.dart</code>: <code>https://azura-backend-production.up.railway.app</code>. Same endpoints as web. Some features use <code>/api/v1/</code> in code; those routes may need to be added on the backend if not present.</p>
+
+<hr>
+
+<h2>Errors Fixed &amp; Corrections</h2>
+<h3>Backend</h3>
+<ol>
+  <li><strong>CORS blocking requests</strong> — Skip redirect for API in <code>custom_helper.php</code> when URI contains <code>/v1/</code> or <code>/api/</code>; set CORS early in <code>index.php</code> and <code>V1.php</code>.</li>
+  <li><strong>Login 400 “Email and password required”</strong> — In <code>V1::auth_login()</code>, fallback to <code>php://input</code> / <code>parse_str()</code> and <code>$_POST</code> for form-urlencoded body.</li>
+  <li><strong>CORS missing on 502</strong> — CORS at entry and in controller; <code>register_shutdown_function</code> in <code>index.php</code> for API requests. Allow <code>*.vercel.app</code> and localhost.</li>
+  <li><strong>CSRF blocking API</strong> — Add <code>v1/auth/login</code>, <code>v1/user/register</code>, <code>v1/create_user</code>, <code>v1/create_admin</code> to <code>csrf_exclude_uris</code> in <code>config.php</code>.</li>
+  <li><strong>Redirect to frontend on API call</strong> — In <code>custom_helper.php</code>, only redirect when URI does not contain <code>/v1/</code> or <code>/api/</code>.</li>
+</ol>
+<h3>Frontend (Web)</h3>
+<ol>
+  <li><strong>Vercel “flutter: command not found”</strong> — In <code>vercel.json</code>, build command: <code>export PATH="$PWD/_flutter/bin:$PATH" && flutter pub get && flutter build web --no-wasm-dry-run</code>.</li>
+  <li><strong>XmlParserException</strong> — In <code>api_service.dart</code>: validate <code>Content-Type</code> before parsing; try/catch around <code>json.decode</code>; user-friendly errors for login, categories, products, getBanners, getProfile.</li>
+  <li><strong>Missing getBanners()</strong> — Implemented in <code>api_service.dart</code>; returns empty list on error.</li>
+  <li><strong>Service worker / source map / WebGL</strong> — Non-critical; no change for deployment.</li>
+</ol>
+<h3>Mobile</h3>
+<ul>
+  <li><strong>Backend connection</strong> — Confirmed <code>_baseUrl</code> points to Railway; main flows use correct <code>/v1/</code> endpoints.</li>
+  <li><strong>Android permissions</strong> — <code>AndroidManifest.xml</code> includes INTERNET and ACCESS_NETWORK_STATE.</li>
+</ul>
+
+<hr>
+
+<h2>Quick Reference</h2>
+<h3>URLs</h3>
+<table>
+  <tr><th>What</th><th>URL</th></tr>
+  <tr><td>Backend API</td><td>https://azura-backend-production.up.railway.app</td></tr>
+  <tr><td>Web app</td><td>https://azura-frontend.vercel.app</td></tr>
+  <tr><td>Admin panel</td><td>https://azura-backend-production.up.railway.app/admin/login</td></tr>
+</table>
+<h3>Build &amp; Deploy Commands</h3>
+<p><strong>Backend (Railway):</strong></p>
+<pre><code>cd azura-backend
+git add . &amp;&amp; git commit -m "message" &amp;&amp; git push origin main</code></pre>
+<p><strong>Frontend web:</strong></p>
+<pre><code>cd azura-frontend
+flutter pub get
+flutter build web --no-wasm-dry-run
+# Deploy build/web via Vercel (e.g. npx vercel --prod from build/web)</code></pre>
+<p><strong>Android APK:</strong></p>
+<pre><code>cd azura-frontend
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk</code></pre>
+<h3>Store Submissions</h3>
+<ul>
+  <li><strong>Google Play Store:</strong> Android release build (APK or AAB) prepared and uploaded.</li>
+  <li><strong>App Store:</strong> iOS build prepared and uploaded via App Store Connect.</li>
+</ul>
+<h3>Changing the Backend URL</h3>
+<p>Edit <code>azura-frontend/lib/api/api_service.dart</code>, constant <code>_baseUrl = 'https://azura-backend-production.up.railway.app'</code>. Then rebuild web and/or mobile and redeploy or re-submit to stores as needed.</p>
+
+<hr>
+<p><strong>Last Updated:</strong> February 2026<br><strong>Author:</strong> Azura project team</p>
+
+</body>
+</html>

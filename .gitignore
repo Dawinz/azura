@@ -1,0 +1,26 @@
+# Project preference: do not track Markdown files
+**/*.md
+
+# Flutter (frontend)
+azura-frontend/build/
+azura-frontend/.dart_tool/
+azura-frontend/.flutter-plugins
+azura-frontend/.flutter-plugins-dependencies
+azura-frontend/.packages
+azura-frontend/.pub/
+azura-frontend/.vercel/
+
+# Secrets & local config
+.env
+.env.*
+**/key.properties
+!**/key.properties.example
+
+# IDE / OS
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Cursor workspace metadata (local)
+.cursor/

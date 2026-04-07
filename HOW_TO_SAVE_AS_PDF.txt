@@ -1,0 +1,13 @@
+To get a PDF of "Deployment & Corrections Documentation":
+
+1. Open this file in your browser:
+   DEPLOYMENT_AND_CORRECTIONS.html
+
+2. Press Ctrl+P (Windows) or Cmd+P (Mac) to open the Print dialog.
+
+3. Set the destination to "Save as PDF" or "Microsoft Print to PDF"
+   (exact name depends on your OS/browser).
+
+4. Click Save and choose where to save DEPLOYMENT_AND_CORRECTIONS.pdf.
+
+The HTML file is print-optimized (the blue instruction box is hidden when printing).

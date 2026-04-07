@@ -1,0 +1,1412 @@
+{
+	"info": {
+		"_postman_id": "5d853eb2-0af1-4bcd-8894-b444fb3f2878",
+		"name": "AzuraMall Store API",
+		"description": "RESTful API for AzuraMall - Built with CodeIgniter 3 & REST_Controller",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6891731",
+		"_collection_link": "https://cloudy-trinity-519628.postman.co/workspace/My-Workspace~6368bbcd-fcd0-4e5a-8fd4-2569d4470e5b/collection/6891731-5d853eb2-0af1-4bcd-8894-b444fb3f2878?action=share&source=collection_link&creator=6891731"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "pesaply@gmail.com",
+									"type": "text"
+								},
+								{
+									"key": "device_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "@Admin123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate user and get profile data"
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"pesabot\",\n  \"email\": \"pesabotapp@gmail.com\",\n  \"password\": \"@Admin123\",\n  \"device_id\": \"1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/user/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"user",
+								"register"
+							]
+						},
+						"description": "Register a new user"
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"pesaply@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/auth/forgetpass",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"auth",
+								"forgetpass"
+							]
+						},
+						"description": "Request password reset link"
+					},
+					"response": []
+				},
+				{
+					"name": "Google Sign-In",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id_token\": \"ya29.a0AfB...\",\n  \"device_id\": \"abc123xyz\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/auth/connect/google",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"auth",
+								"connect",
+								"google"
+							]
+						},
+						"description": "Authenticate via Google OAuth token"
+					},
+					"response": []
+				},
+				{
+					"name": "Facebook Connect (Redirect)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/auth/connect/facebook?device_id=abc123xyz",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"auth",
+								"connect",
+								"facebook"
+							],
+							"query": [
+								{
+									"key": "device_id",
+									"value": "abc123xyz"
+								}
+							]
+						},
+						"description": "Initiate Facebook OAuth flow"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Category",
+			"item": [
+				{
+					"name": "List All Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/v1/category/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"category",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Products by Category",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/v1/category/products?category_id=1&page=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"category",
+								"products"
+							],
+							"query": [
+								{
+									"key": "category_id",
+									"value": "1"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get paginated products by category ID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Messages",
+			"item": [
+				{
+					"name": "Start New Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"receiver_id\": 3,\n  \"subject\": \"Product Inquiry\",\n  \"body_message\": \"Hi, is this item still available?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/messages/addnew",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"messages",
+								"addnew"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"receiver_id\": 3,\n  \"id_message\": 12,\n  \"body_message\": \"Yes, it's available!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/messages/send",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"messages",
+								"send"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Conversations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/messages/list?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"messages",
+								"list"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Conversation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/messages/conversation?conversation_id=12&user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"messages",
+								"conversation"
+							],
+							"query": [
+								{
+									"key": "conversation_id",
+									"value": "12"
+								},
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unread Count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/messages/unread-count?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"messages",
+								"unread-count"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id_message\": 12,\n  \"user_id\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/messages/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"messages",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Profile",
+			"item": [
+				{
+					"name": "Public Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/profile?profile_slug=johndoe",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"profile"
+							],
+							"query": [
+								{
+									"key": "profile_slug",
+									"value": "johndoe"
+								}
+							]
+						},
+						"description": "Get public profile by slug"
+					},
+					"response": []
+				},
+				{
+					"name": "User Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/profile/products?slug=pesaply",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"profile",
+								"products"
+							],
+							"query": [
+								{
+									"key": "slug",
+									"value": "pesaply"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Favorites",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/profile/favorites?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"profile",
+								"favorites"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/profile/followers?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"profile",
+								"followers"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Following",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/profile/following?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"profile",
+								"following"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reviews",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/profile/reviews?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"profile",
+								"reviews"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Drafts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/profile/drafts?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"profile",
+								"drafts"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Settings",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/setting/profile?user_id=2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"setting",
+								"profile"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"username\": \"johndoe_updated\",\n  \"email\": \"newemail@example.com\",\n  \"slug\": \"johndoe_updated\",\n  \"send_email_new_message\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile Copy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"username\": \"johndoe_updated\",\n  \"email\": \"newemail@example.com\",\n  \"slug\": \"johndoe_updated\",\n  \"send_email_new_message\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Contact Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/contact?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"contact"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Contact Info",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"phone\": \"+628123456789\",\n  \"address\": \"Jl. Merdeka No. 1\",\n  \"country_id\": 1,\n  \"state_id\": 2,\n  \"city_id\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/contact",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"contact"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Shop Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/setting/shop?user_id=2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"setting",
+								"shop"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Shop Settings",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"shop_name\": \"John's Store\",\n  \"about\": \"Fresh organic products\",\n  \"show_rss_feeds\": 1,\n  \"send_email_when_item_sold\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/shop",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"shop"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Shipping Address",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/shipping?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"shipping"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Shipping Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"shipping_first_name\": \"John\",\n  \"shipping_last_name\": \"Doe\",\n  \"shipping_email\": \"john@example.com\",\n  \"shipping_phone_number\": \"+628123456789\",\n  \"shipping_address_1\": \"Jl. Merdeka No. 1\",\n  \"shipping_country_id\": 1,\n  \"shipping_state\": \"Jakarta\",\n  \"shipping_city\": \"Central Jakarta\",\n  \"shipping_zip_code\": \"10110\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/shipping",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"shipping"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Social Media",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/sosmed?user_id=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"sosmed"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Social Media",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"facebook_url\": \"https://facebook.com/johndoe\",\n  \"instagram_url\": \"https://instagram.com/johndoe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/sosmed",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"sosmed"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"current_password\": \"oldpass123\",\n  \"new_password\": \"newpass456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Activation Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/setting/resend-activation",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"setting",
+								"resend-activation"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Sell",
+			"item": [
+				{
+					"name": "Create Product (Step 1)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"title\": \"Organic Apples\",\n  \"category_id\": 3,\n  \"description\": \"Fresh from the farm\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sell",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"sell"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Product Details",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"product_id\": 123,\n  \"price\": 50000,\n  \"quantity\": 100,\n  \"satuan\": \"kg\",\n  \"product_condition\": \"New\",\n  \"shipping_cost_type\": \"Free\",\n  \"shipping_time\": \"1_business_day\",\n  \"country_id\": 1,\n  \"state_id\": 2,\n  \"city_id\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/sell/detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"sell",
+								"detail"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Images (Multipart)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "product_id",
+									"value": "123",
+									"type": "text"
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sell/images",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sell",
+								"images"
+							]
+						},
+						"description": "Upload one or more images. Use 'files' as key (multiple allowed)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"image_id\": 25,\n  \"product_id\": 123\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sell/image/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sell",
+								"image",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set Main Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"image_id\": 25,\n  \"product_id\": 123\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sell/image/set-main",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sell",
+								"image",
+								"set-main"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit Product (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sell/edit?user_id=5&product_id=123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sell",
+								"edit"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "5"
+								},
+								{
+									"key": "product_id",
+									"value": "123"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Product",
+			"item": [
+				{
+					"name": "Product Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/product/detail_get?slug=air-jordans-8&user_id=2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"product",
+								"detail_get"
+							],
+							"query": [
+								{
+									"key": "slug",
+									"value": "air-jordans-8"
+								},
+								{
+									"key": "user_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Favorite",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"product_id\": 123\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/product/favorite",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"product",
+								"favorite"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark as Sold",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"product_id\": 123\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/product/sold",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"product",
+								"sold"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Review",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"product_id\": 123,\n  \"rating\": 5,\n  \"review\": \"Great product!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/product/review",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"product",
+								"review"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Review",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"product_id\": 123,\n  \"review_id\": 8\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/product/review/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"product",
+								"review",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 5,\n  \"product_id\": 123,\n  \"comment\": \"Is this still available?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/product/comment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"product",
+								"comment"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"comment_id\": 15,\n  \"user_id\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/product/comment/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"product",
+								"comment",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Promote",
+			"item": [
+				{
+					"name": "Get Promotion Plans",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/promote/plan",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"promote",
+								"plan"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start Promotion Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"product_id\": 123,\n  \"plan\": \"daily_plan\",\n  \"duration\": 7,\n  \"buyer_name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+628123456789\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/promote/plan",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"promote",
+								"plan"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://api.azuramall.store",
+			"description": "Base URL for the API"
+		}
+	]
+}

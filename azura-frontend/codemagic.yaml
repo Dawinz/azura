@@ -1,0 +1,37 @@
+# Codemagic workflow: build iOS IPA and publish to App Store Connect (TestFlight / App Store)
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app
+# App Store Connect: https://docs.codemagic.io/yaml-publishing/app-store-connect/
+
+workflows:
+  ios-azura:
+    name: Azura iOS (IPA → App Store)
+    max_build_duration: 120
+    instance_type: mac_mini_m2  # Required for iOS builds
+
+    environment:
+      flutter: stable
+      ios_signing:
+        distribution_type: app_store  # For TestFlight & App Store
+        bundle_identifier: com.azura.azuramall  # App Store bundle ID
+    scripts:
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Install CocoaPods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Flutter build IPA
+        script: |
+          # Use Codemagic's BUILD_NUMBER if set, otherwise default to 1.
+          BUILD_NUMBER=${BUILD_NUMBER:-1}
+          flutter build ipa --release \
+            --build-name=1.0.$BUILD_NUMBER \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log

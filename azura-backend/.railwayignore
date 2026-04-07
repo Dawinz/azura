@@ -1,0 +1,16 @@
+.git
+.gitignore
+.vscode
+.idea
+node_modules
+uploads/
+application/cache/
+application/logs/
+# Keep vvv/sql for database import script (do not ignore)
+# vvv/
+*.md
+srs.md
+azura-backend.zip
+.DS_Store
+Thumbs.db
+*.log
