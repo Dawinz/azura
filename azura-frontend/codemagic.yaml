@@ -1,12 +1,17 @@
 # Codemagic workflow: build iOS IPA and publish to App Store Connect (TestFlight / App Store)
 # Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app
 # App Store Connect: https://docs.codemagic.io/yaml-publishing/app-store-connect/
+#
+# Apple integration label in Codemagic must match exactly (see CODEMAGIC_MOBILE_STORE_GUIDE.md).
 
 workflows:
   ios-azura:
     name: Azura iOS (IPA → App Store)
     max_build_duration: 120
     instance_type: mac_mini_m2  # Required for iOS builds
+
+    integrations:
+      app_store_connect: applestoreconnectkey
 
     environment:
       flutter: stable
@@ -35,3 +40,8 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

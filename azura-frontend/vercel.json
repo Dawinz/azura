@@ -3,6 +3,7 @@
   "buildCommand": "export PATH=\"$PWD/_flutter/bin:$PATH\" && flutter pub get && flutter build web --no-wasm-dry-run",
   "installCommand": "git clone https://github.com/flutter/flutter.git --depth 1 -b stable _flutter && export PATH=\"$PWD/_flutter/bin:$PATH\" && flutter doctor",
   "rewrites": [
+    { "source": "/privacy-policy", "destination": "/privacy-policy.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
