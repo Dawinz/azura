@@ -1,3 +1,5 @@
+import 'package:shop/core/app_config.dart';
+
 class ProductModel {
   final String id;
   final String title;
@@ -106,11 +108,7 @@ class ProductModel {
   });
 
   static String _getImageUrl(String path) {
-    if (path.startsWith('http')) {
-      return path;
-    } else {
-      return 'https://api.azuramall.store/uploads/$path';
-    }
+    return AppConfig.resolveUploadUrl(path);
   }
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {

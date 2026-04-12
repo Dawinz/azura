@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:shop/api/api_service.dart';
 import 'package:shop/components/product/product_card.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/constants.dart';
@@ -28,33 +27,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _fetchProducts() async {
     try {
-      final response =
-          await http.get(Uri.parse('https://api.azuramall.store/v1/product'));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['status'] == true &&
-            data['data'] != null &&
-            data['data']['product'] is List) {
-          setState(() {
-            products = (data['data']['product'] as List)
-                .map((e) => ProductModel.fromJson(e))
-                .toList();
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            error = data['message'] ??
-                'Failed to load products: Invalid data format';
-            isLoading = false;
-          });
-        }
-      } else {
-        setState(() {
-          error = 'Failed to load products: ${response.statusCode}';
-          isLoading = false;
-        });
-      }
+      final list = await ApiService.getProducts();
+      setState(() {
+        products = list;
+        isLoading = false;
+        error = '';
+      });
     } catch (e) {
       setState(() {
         error = 'Error fetching products: ${e.toString()}';

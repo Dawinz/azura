@@ -1,17 +1,13 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shop/core/app_config.dart';
 import 'package:shop/models/category_model.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/models/user_model.dart';
 
 class ApiService {
-  // Change this to switch between local and production
-  // For local development: 'http://localhost/azura-backend'
-  // For Android Emulator: 'http://10.0.2.2/azura-backend'
-  // For production: 'https://api.azuramall.store'
-  // Railway deployment (clean URLs via router.php)
-  static const String _baseUrl = 'https://azura-backend-production.up.railway.app';
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   static Future<List<ProductModel>> getProducts() async {
     try {
@@ -97,7 +93,7 @@ class ApiService {
   // Auth
   static Future<UserModel> login(
       String email, String password, String deviceId) async {
-    const String loginUrl = '$_baseUrl/v1/auth/login';
+    final String loginUrl = '$_baseUrl/v1/auth/login';
     try {
       final response = await http.post(
         Uri.parse(loginUrl),
@@ -136,7 +132,7 @@ class ApiService {
 
   static Future<void> register(String username, String email, String password,
       String phoneNumber) async {
-    const String registerUrl = '$_baseUrl/v1/user/register';
+    final String registerUrl = '$_baseUrl/v1/user/register';
     final response = await http.post(
       Uri.parse(registerUrl),
       headers: {'Content-Type': 'application/json'},
@@ -171,7 +167,7 @@ class ApiService {
   }
 
   static Future<void> forgotPassword(String email) async {
-    const String forgotPasswordUrl = '$_baseUrl/v1/auth/forgetpass';
+    final String forgotPasswordUrl = '$_baseUrl/v1/auth/forgetpass';
     final response = await http.post(
       Uri.parse(forgotPasswordUrl),
       headers: {'Content-Type': 'application/json'},
@@ -183,7 +179,7 @@ class ApiService {
   }
 
   static Future<void> googleSignIn(String idToken, String deviceId) async {
-    const String googleSignInUrl = '$_baseUrl/v1/auth/connect/google';
+    final String googleSignInUrl = '$_baseUrl/v1/auth/connect/google';
     final response = await http.post(
       Uri.parse(googleSignInUrl),
       headers: {'Content-Type': 'application/json'},
@@ -195,7 +191,7 @@ class ApiService {
   }
 
   static Future<void> facebookSignIn(String deviceId) async {
-    const String facebookSignInUrl = '$_baseUrl/v1/auth/connect/facebook';
+    final String facebookSignInUrl = '$_baseUrl/v1/auth/connect/facebook';
     final response =
         await http.get(Uri.parse('$facebookSignInUrl?device_id=$deviceId'));
     if (response.statusCode != 200) {
@@ -207,7 +203,7 @@ class ApiService {
   static Future<List<dynamic>> getBanners() async {
     // Banners endpoint might not exist, return empty list to prevent crashes
     try {
-      const String getBannersUrl = '$_baseUrl/v1/banner/list';
+      final String getBannersUrl = '$_baseUrl/v1/banner/list';
       final response = await http.get(Uri.parse(getBannersUrl));
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
@@ -236,7 +232,7 @@ class ApiService {
 
   // Category
   static Future<List<CategoryModel>> getCategories() async {
-    const String getCategoriesUrl = '$_baseUrl/v1/category/list';
+    final String getCategoriesUrl = '$_baseUrl/v1/category/list';
     try {
       final response = await http.get(Uri.parse(getCategoriesUrl));
       if (response.statusCode == 200) {
@@ -279,7 +275,7 @@ class ApiService {
   // Messages
   static Future<void> startNewConversation(
       int userId, int receiverId, String subject, String bodyMessage) async {
-    const String startNewConversationUrl = '$_baseUrl/v1/messages/addnew';
+    final String startNewConversationUrl = '$_baseUrl/v1/messages/addnew';
     final response = await http.post(
       Uri.parse(startNewConversationUrl),
       headers: {'Content-Type': 'application/json'},
@@ -297,7 +293,7 @@ class ApiService {
 
   static Future<void> sendMessage(
       int userId, int receiverId, int idMessage, String bodyMessage) async {
-    const String sendMessageUrl = '$_baseUrl/v1/messages/send';
+    final String sendMessageUrl = '$_baseUrl/v1/messages/send';
     final response = await http.post(
       Uri.parse(sendMessageUrl),
       headers: {'Content-Type': 'application/json'},
@@ -350,7 +346,7 @@ class ApiService {
   }
 
   static Future<void> deleteConversation(int idMessage, int userId) async {
-    const String deleteConversationUrl = '$_baseUrl/api/v1/messages/delete';
+    final String deleteConversationUrl = '$_baseUrl/api/v1/messages/delete';
     final response = await http.post(
       Uri.parse(deleteConversationUrl),
       headers: {'Content-Type': 'application/json'},
@@ -470,7 +466,7 @@ class ApiService {
 
   static Future<void> updateProfile(int userId, String username, String email,
       String slug, int sendEmailNewMessage) async {
-    const String updateProfileUrl = '$_baseUrl/api/v1/setting/profile';
+    final String updateProfileUrl = '$_baseUrl/api/v1/setting/profile';
     final response = await http.post(
       Uri.parse(updateProfileUrl),
       headers: {'Content-Type': 'application/json'},
@@ -501,7 +497,7 @@ class ApiService {
 
   static Future<void> updateContactInfo(int userId, String phone, String address,
       int countryId, int stateId, int cityId) async {
-    const String updateContactInfoUrl = '$_baseUrl/api/v1/setting/contact';
+    final String updateContactInfoUrl = '$_baseUrl/api/v1/setting/contact';
     final response = await http.post(
       Uri.parse(updateContactInfoUrl),
       headers: {'Content-Type': 'application/json'},
@@ -533,7 +529,7 @@ class ApiService {
 
   static Future<void> updateShopSettings(int userId, String shopName, String about,
       int showRssFeeds, int sendEmailWhenItemSold) async {
-    const String updateShopSettingsUrl = '$_baseUrl/api/v1/setting/shop';
+    final String updateShopSettingsUrl = '$_baseUrl/api/v1/setting/shop';
     final response = await http.post(
       Uri.parse(updateShopSettingsUrl),
       headers: {'Content-Type': 'application/json'},
@@ -574,7 +570,7 @@ class ApiService {
     String shippingCity,
     String shippingZipCode,
   ) async {
-    const String updateShippingAddressUrl = '$_baseUrl/api/v1/setting/shipping';
+    final String updateShippingAddressUrl = '$_baseUrl/api/v1/setting/shipping';
     final response = await http.post(
       Uri.parse(updateShippingAddressUrl),
       headers: {'Content-Type': 'application/json'},
@@ -610,7 +606,7 @@ class ApiService {
 
   static Future<void> updateSocialMedia(
       int userId, String facebookUrl, String instagramUrl) async {
-    const String updateSocialMediaUrl = '$_baseUrl/api/v1/setting/sosmed';
+    final String updateSocialMediaUrl = '$_baseUrl/api/v1/setting/sosmed';
     final response = await http.post(
       Uri.parse(updateSocialMediaUrl),
       headers: {'Content-Type': 'application/json'},
@@ -627,7 +623,7 @@ class ApiService {
 
   static Future<void> changePassword(
       int userId, String currentPassword, String newPassword) async {
-    const String changePasswordUrl = '$_baseUrl/api/v1/setting/password';
+    final String changePasswordUrl = '$_baseUrl/api/v1/setting/password';
     final response = await http.post(
       Uri.parse(changePasswordUrl),
       headers: {'Content-Type': 'application/json'},
@@ -643,7 +639,7 @@ class ApiService {
   }
 
   static Future<void> resendActivationEmail(int userId) async {
-    const String resendActivationEmailUrl =
+    final String resendActivationEmailUrl =
         '$_baseUrl/api/v1/setting/resend-activation';
     final response = await http.post(
       Uri.parse(resendActivationEmailUrl),
@@ -658,7 +654,7 @@ class ApiService {
   // Sell
   static Future<dynamic> createProductStep1(
       int userId, String title, int categoryId, String description) async {
-    const String createProductStep1Url = '$_baseUrl/v1/sell';
+    final String createProductStep1Url = '$_baseUrl/v1/sell';
     final response = await http.post(
       Uri.parse(createProductStep1Url),
       headers: {'Content-Type': 'application/json'},
@@ -689,7 +685,7 @@ class ApiService {
     int stateId,
     int cityId,
   ) async {
-    const String addProductDetailsUrl = '$_baseUrl/v1/sell/detail';
+    final String addProductDetailsUrl = '$_baseUrl/v1/sell/detail';
     final response = await http.post(
       Uri.parse(addProductDetailsUrl),
       headers: {'Content-Type': 'application/json'},
@@ -713,7 +709,7 @@ class ApiService {
 
   static Future<void> uploadImages(
       int productId, List<http.MultipartFile> files) async {
-    const String uploadImagesUrl = '$_baseUrl/api/v1/sell/images';
+    final String uploadImagesUrl = '$_baseUrl/api/v1/sell/images';
     final request = http.MultipartRequest('POST', Uri.parse(uploadImagesUrl));
     request.fields['product_id'] = productId.toString();
     request.files.addAll(files);
@@ -724,7 +720,7 @@ class ApiService {
   }
 
   static Future<void> deleteImage(int imageId, int productId) async {
-    const String deleteImageUrl = '$_baseUrl/api/v1/sell/image/delete';
+    final String deleteImageUrl = '$_baseUrl/api/v1/sell/image/delete';
     final response = await http.post(
       Uri.parse(deleteImageUrl),
       headers: {'Content-Type': 'application/json'},
@@ -736,7 +732,7 @@ class ApiService {
   }
 
   static Future<void> setMainImage(int imageId, int productId) async {
-    const String setMainImageUrl = '$_baseUrl/api/v1/sell/image/set-main';
+    final String setMainImageUrl = '$_baseUrl/api/v1/sell/image/set-main';
     final response = await http.post(
       Uri.parse(setMainImageUrl),
       headers: {'Content-Type': 'application/json'},
@@ -773,7 +769,7 @@ class ApiService {
   }
 
   static Future<void> toggleFavorite(int userId, int productId) async {
-    const String toggleFavoriteUrl = '$_baseUrl/v1/product/favorite';
+    final String toggleFavoriteUrl = '$_baseUrl/v1/product/favorite';
     final response = await http.post(
       Uri.parse(toggleFavoriteUrl),
       headers: {'Content-Type': 'application/json'},
@@ -785,7 +781,7 @@ class ApiService {
   }
 
   static Future<void> markAsSold(int userId, int productId) async {
-    const String markAsSoldUrl = '$_baseUrl/v1/product/sold';
+    final String markAsSoldUrl = '$_baseUrl/v1/product/sold';
     final response = await http.post(
       Uri.parse(markAsSoldUrl),
       headers: {'Content-Type': 'application/json'},
@@ -798,7 +794,7 @@ class ApiService {
 
   static Future<void> addReview(
       int userId, int productId, int rating, String review) async {
-    const String addReviewUrl = '$_baseUrl/v1/product/review';
+    final String addReviewUrl = '$_baseUrl/v1/product/review';
     final response = await http.post(
       Uri.parse(addReviewUrl),
       headers: {'Content-Type': 'application/json'},
@@ -815,7 +811,7 @@ class ApiService {
   }
 
   static Future<void> deleteReview(int userId, int productId, int reviewId) async {
-    const String deleteReviewUrl = '$_baseUrl/v1/product/review/delete';
+    final String deleteReviewUrl = '$_baseUrl/v1/product/review/delete';
     final response = await http.post(
       Uri.parse(deleteReviewUrl),
       headers: {'Content-Type': 'application/json'},
@@ -832,7 +828,7 @@ class ApiService {
 
   static Future<void> addComment(
       int userId, int productId, String comment) async {
-    const String addCommentUrl = '$_baseUrl/api/v1/product/comment';
+    final String addCommentUrl = '$_baseUrl/api/v1/product/comment';
     final response = await http.post(
       Uri.parse(addCommentUrl),
       headers: {'Content-Type': 'application/json'},
@@ -845,7 +841,7 @@ class ApiService {
   }
 
   static Future<void> deleteComment(int commentId, int userId) async {
-    const String deleteCommentUrl = '$_baseUrl/api/v1/product/comment/delete';
+    final String deleteCommentUrl = '$_baseUrl/api/v1/product/comment/delete';
     final response = await http.post(
       Uri.parse(deleteCommentUrl),
       headers: {'Content-Type': 'application/json'},
@@ -858,7 +854,7 @@ class ApiService {
 
   // Promote
   static Future<List<dynamic>> getPromotionPlans() async {
-    const String getPromotionPlansUrl = '$_baseUrl/v1/promote/plan';
+    final String getPromotionPlansUrl = '$_baseUrl/v1/promote/plan';
     final response = await http.get(Uri.parse(getPromotionPlansUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -876,7 +872,7 @@ class ApiService {
     String email,
     String phone,
   ) async {
-    const String startPromotionPaymentUrl = '$_baseUrl/api/v1/promote/plan';
+    final String startPromotionPaymentUrl = '$_baseUrl/api/v1/promote/plan';
     final response = await http.post(
       Uri.parse(startPromotionPaymentUrl),
       headers: {'Content-Type': 'application/json'},

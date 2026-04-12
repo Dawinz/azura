@@ -7,8 +7,20 @@ version: 1.0.0+1
 
 flutter_launcher_icons:
   android: true
-  image_path: "assets/logo/logo.jpg"
+  ios: true
+  image_path: "assets/branding/azuramall_app_icon.png"
   min_sdk_android: 21
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#1A237E"
+  image: assets/branding/azuramall_app_icon.png
+  android: true
+  ios: true
+  web: false
+  android_12:
+    color: "#1A237E"
+    image: assets/branding/azuramall_app_icon.png
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -24,10 +36,12 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   flutter_widget_from_html_core: ^0.15.1
   animations: ^2.0.11
+  http: ^1.2.2
   url_launcher: ^6.3.0
   flutter_secure_storage: ^9.2.4
   provider: ^6.1.5+1
   shared_preferences: ^2.0.15
+  flutter_native_splash: ^2.4.4
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +59,7 @@ flutter:
     - assets/Illustration/
     - assets/flags/
     - assets/logo/
+    - assets/branding/
     - assets/screens/
 
   fonts:
