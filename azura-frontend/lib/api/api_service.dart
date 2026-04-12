@@ -7,7 +7,7 @@ import 'package:shop/models/product_model.dart';
 import 'package:shop/models/user_model.dart';
 
 class ApiService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.apiEntryUrl;
 
   static Future<List<ProductModel>> getProducts() async {
     try {

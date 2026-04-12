@@ -8,14 +8,19 @@ class AppConfig {
   static const String _defaultApiBase =
       'https://azura-backend-production.up.railway.app';
 
-  /// HTTPS origin only, no trailing slash.
+  /// HTTPS origin only, no trailing slash (no `/index.php` suffix).
   static String get apiBaseUrl {
     const fromEnv = String.fromEnvironment(
       'API_BASE_URL',
       defaultValue: _defaultApiBase,
     );
-    return fromEnv.trim().replaceAll(RegExp(r'/+$'), '');
+    var base = fromEnv.trim().replaceAll(RegExp(r'/+$'), '');
+    base = base.replaceFirst(RegExp(r'/index\.php$'), '');
+    return base;
   }
+
+  /// CodeIgniter entry; FrankenPHP/Caddy on Railway does not apply root `.htaccess` rewrites.
+  static String get apiEntryUrl => '$apiBaseUrl/index.php';
 
   /// Backend-relative upload paths (e.g. `202507/photo.jpg`).
   static String resolveUploadUrl(String path) {

@@ -64,7 +64,17 @@ function set_cors_headers_for_api() {
         'http://127.0.0.1:3000',
         'https://web-five-tau-70.vercel.app',
         'https://web-vi5fbwp80-dawson-s-projects.vercel.app',
+        'https://azuramall.com',
+        'https://www.azuramall.com',
     );
+    $extra = getenv('ALLOWED_ORIGINS');
+    if ($extra !== false && $extra !== '') {
+        foreach (array_map('trim', explode(',', $extra)) as $o) {
+            if ($o !== '') {
+                $allowed_origins[] = $o;
+            }
+        }
+    }
     
     // Allow any vercel.app subdomain or localhost
     $allow_origin = null;
