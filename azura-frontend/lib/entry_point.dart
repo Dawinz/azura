@@ -45,12 +45,10 @@ class _EntryPointState extends State<EntryPoint> {
         leading: const SizedBox(),
         leadingWidth: 0,
         centerTitle: false,
-        title: SvgPicture.asset(
+        title: Image.asset(
           "assets/logo/logo.jpg",
-          colorFilter: ColorFilter.mode(
-              Theme.of(context).iconTheme.color!, BlendMode.srcIn),
-          height: 20,
-          width: 100,
+          height: 28,
+          fit: BoxFit.contain,
         ),
         actions: [
           IconButton(

@@ -8,19 +8,19 @@ version: 1.0.0+1
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/branding/azuramall_app_icon.png"
+  image_path: "assets/logo/logo.jpg"
   min_sdk_android: 21
   remove_alpha_ios: true
 
 flutter_native_splash:
   color: "#1A237E"
-  image: assets/branding/azuramall_app_icon.png
+  image: assets/logo/logo.jpg
   android: true
   ios: true
   web: false
   android_12:
     color: "#1A237E"
-    image: assets/branding/azuramall_app_icon.png
+    image: assets/logo/logo.jpg
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
