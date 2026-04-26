@@ -26,12 +26,14 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    final name = map['name']?.toString();
+    final username = map['username']?.toString();
     return UserModel(
       id: map['id']?.toString() ?? '',
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      avatar: map['avatar'],
-      token: map['token'],
+      name: (name != null && name.isNotEmpty) ? name : (username ?? ''),
+      email: map['email']?.toString() ?? '',
+      avatar: map['avatar']?.toString(),
+      token: map['token']?.toString(),
     );
   }
 

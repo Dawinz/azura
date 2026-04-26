@@ -45,7 +45,8 @@ class _MyAppState extends State<MyApp> {
         ),
         themeMode: ThemeMode.light,
         onGenerateRoute: router.generateRoute,
-        initialRoute: onbordingScreenRoute,
+        // Open the shopping experience directly; onboarding remains optional.
+        initialRoute: entryPointScreenRoute,
       ),
     );
   }

@@ -1,5 +1,3 @@
-import 'package:azur/constants.dart';
-
 class Product {
   final String id;
   final String? title;

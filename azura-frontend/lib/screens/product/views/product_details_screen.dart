@@ -2,11 +2,11 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:shop/api/api_service.dart';
-import 'package:shop/components/buy_full_ui_kit.dart';
 import 'package:shop/components/product/product_card.dart';
 import 'package:shop/constants.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/route/route_constants.dart';
+import 'package:shop/services/storage_service.dart';
 
 import 'components/product_images.dart';
 import 'components/product_info.dart';
@@ -22,19 +22,37 @@ class ProductDetailsScreen extends StatefulWidget {
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   ProductModel? _productDetails;
+  late Future<List<ProductModel>> _similarFuture;
+
+  String? _categoryIdForSimilar(ProductModel? detail) {
+    final c = detail?.categoryId ?? widget.product.categoryId;
+    if (c.isEmpty || c == '0') return null;
+    return c;
+  }
 
   @override
   void initState() {
     super.initState();
+    _similarFuture = ApiService.getSimilarProducts(
+      widget.product.slug,
+      categoryId: _categoryIdForSimilar(null),
+    );
     _fetchProductDetails();
   }
 
   Future<void> _fetchProductDetails() async {
     try {
+      final stored = await StorageService.getUser();
+      final viewer =
+          (stored != null && stored.id.isNotEmpty) ? stored.id : '0';
       final productDetails =
-          await ApiService.getProductDetails(widget.product.slug, "2");
+          await ApiService.getProductDetails(widget.product.slug, viewer);
       setState(() {
         _productDetails = productDetails;
+        _similarFuture = ApiService.getSimilarProducts(
+          widget.product.slug,
+          categoryId: _categoryIdForSimilar(productDetails),
+        );
       });
     } catch (e) {
       log(e.toString());
@@ -46,7 +64,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: ElevatedButton(
-        onPressed: () {},
+        onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final navigator = Navigator.of(context);
+          final user = await StorageService.getUser();
+          if (!mounted) return;
+          if (user == null || user.id.isEmpty) {
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Please log in to purchase this product'),
+              ),
+            );
+            navigator.pushNamed(logInScreenRoute);
+            return;
+          }
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Checkout flow coming next'),
+            ),
+          );
+        },
         child: const Text("Buy Now"),
       ),
       body: _productDetails == null
@@ -72,9 +109,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ProductInfo(
                     title: _productDetails!.title,
                     brand: _productDetails!.shopName,
-                    rating: double.parse(_productDetails!.rating),
+                    rating: double.tryParse(_productDetails!.rating) ?? 0,
                     numOfReviews: 0, // No num of reviews in the model
-                    isAvailable: _productDetails!.status == 'active',
+                    isAvailable: (_productDetails!.status == '1' ||
+                            _productDetails!.status == 'active') &&
+                        _productDetails!.isSold != '1',
                     price: _productDetails!.price,
                     currency: _productDetails!.currency,
                   ),
@@ -114,8 +153,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         SizedBox(
                           height: 220,
                           child: FutureBuilder<List<ProductModel>>(
-                            future:
-                                ApiService.getSimilarProducts(widget.product.slug),
+                            future: _similarFuture,
                             builder: (context, snapshot) {
                               if (snapshot.hasData) {
                                 return ListView.builder(

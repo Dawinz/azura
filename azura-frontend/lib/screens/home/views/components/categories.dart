@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shop/route/screen_export.dart';
+import 'package:shop/models/category_model.dart' as api;
 
 import '../../../../constants.dart';
 
@@ -32,27 +33,46 @@ List<CategoryModel> demoCategories = [
 class Categories extends StatelessWidget {
   const Categories({
     super.key,
+    this.categories,
   });
+
+  final List<api.CategoryModel>? categories;
 
   @override
   Widget build(BuildContext context) {
+    final bool useApiCategories = categories != null && categories!.isNotEmpty;
+    final int itemCount = useApiCategories ? categories!.length : demoCategories.length;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           ...List.generate(
-            demoCategories.length,
+            itemCount,
             (index) => Padding(
               padding: EdgeInsets.only(
                   left: index == 0 ? defaultPadding : defaultPadding / 2,
                   right:
-                      index == demoCategories.length - 1 ? defaultPadding : 0),
+                      index == itemCount - 1 ? defaultPadding : 0),
               child: CategoryBtn(
-                category: demoCategories[index].name,
-                svgSrc: demoCategories[index].svgSrc,
+                category: useApiCategories
+                    ? categories![index].title
+                    : demoCategories[index].name,
+                svgSrc: useApiCategories ? null : demoCategories[index].svgSrc,
                 isActive: index == 0,
                 press: () {
-                  if (demoCategories[index].route != null) {
+                  if (useApiCategories) {
+                    final c = categories![index];
+                    if (c.id > 0) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => ProductListScreen(
+                            categoryId: c.id,
+                            title: c.title,
+                          ),
+                        ),
+                      );
+                    }
+                  } else if (demoCategories[index].route != null) {
                     Navigator.pushNamed(context, demoCategories[index].route!);
                   }
                 },

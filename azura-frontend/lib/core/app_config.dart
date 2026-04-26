@@ -5,8 +5,8 @@
 class AppConfig {
   AppConfig._();
 
-  static const String _defaultApiBase =
-      'https://azura-backend-production.up.railway.app';
+  /// Same origin as the storefront so the app hits the same catalog, auth, and V1 API as the website.
+  static const String _defaultApiBase = 'https://azuramall.shop';
 
   /// HTTPS origin only, no trailing slash (no `/index.php` suffix).
   static String get apiBaseUrl {

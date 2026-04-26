@@ -6,7 +6,11 @@ import 'package:shop/constants.dart';
 import 'package:shop/route/route_constants.dart';
 
 class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+  const ProductListScreen({super.key, this.categoryId, this.title});
+
+  /// When set, loads `/v1/product/list?category_id=` like the website category pages.
+  final int? categoryId;
+  final String? title;
 
   static String routeName = "/products";
 
@@ -27,7 +31,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _fetchProducts() async {
     try {
-      final list = await ApiService.getProducts();
+      final List<ProductModel> list;
+      if (widget.categoryId != null && widget.categoryId! > 0) {
+        list = await ApiService.getProductsByCategory(widget.categoryId!, 1);
+      } else {
+        list = await ApiService.getProducts();
+      }
       setState(() {
         products = list;
         isLoading = false;
@@ -45,7 +54,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Products"),
+        title: Text(widget.title ?? 'Products'),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

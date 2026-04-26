@@ -61,7 +61,7 @@ class OrderCard extends StatelessWidget {
                 style: const TextStyle(color: textColor),
                 children: [
                   TextSpan(
-                    text: order.items.isNotEmpty ? order.items[0].product.title ?? '' : '',
+                    text: order.items.isNotEmpty ? order.items[0].product.title : '',
                     style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
                   )
                 ],

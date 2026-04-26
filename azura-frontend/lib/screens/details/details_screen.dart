@@ -7,6 +7,7 @@ import 'package:shop/components/product/secondary_product_card.dart';
 import 'package:shop/constants.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/screens/product/views/components/product_images.dart';
+import 'package:shop/services/storage_service.dart';
 
 class DetailsScreen extends StatefulWidget {
   const DetailsScreen({super.key, required this.product});
@@ -21,32 +22,47 @@ class _DetailsScreenState extends State<DetailsScreen> {
   ProductModel? _productDetails;
   late Future<List<ProductModel>> _similarProductsFuture;
 
+  String? _categoryIdForSimilar(ProductModel? detail) {
+    final c = detail?.categoryId ?? widget.product.categoryId;
+    if (c.isEmpty || c == '0') return null;
+    return c;
+  }
+
   @override
   void initState() {
     super.initState();
-    // Initial fetch
+    _similarProductsFuture = ApiService.getSimilarProducts(
+      widget.product.slug,
+      categoryId: _categoryIdForSimilar(null),
+    );
     _fetchProductDetails();
-    _similarProductsFuture = ApiService.getSimilarProducts(widget.product.slug);
   }
 
   @override
   void didUpdateWidget(covariant DetailsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Check if the product slug has changed
     if (oldWidget.product.slug != widget.product.slug) {
-      // Fetch new product details
+      _similarProductsFuture = ApiService.getSimilarProducts(
+        widget.product.slug,
+        categoryId: _categoryIdForSimilar(null),
+      );
       _fetchProductDetails();
-      _similarProductsFuture =
-          ApiService.getSimilarProducts(widget.product.slug);
     }
   }
 
   Future<void> _fetchProductDetails() async {
     try {
+      final stored = await StorageService.getUser();
+      final viewer =
+          (stored != null && stored.id.isNotEmpty) ? stored.id : '0';
       final productDetails =
-          await ApiService.getProductDetails(widget.product.slug, "2");
+          await ApiService.getProductDetails(widget.product.slug, viewer);
       setState(() {
         _productDetails = productDetails;
+        _similarProductsFuture = ApiService.getSimilarProducts(
+          widget.product.slug,
+          categoryId: _categoryIdForSimilar(productDetails),
+        );
       });
     } catch (e) {
       log(e.toString());

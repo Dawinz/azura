@@ -65,7 +65,7 @@ class SecondaryProductCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.shopName.toUpperCase() ?? '',
+                    product.shopName.toUpperCase(),
                     style: const TextStyle(
                       fontSize: 10,
                     ),

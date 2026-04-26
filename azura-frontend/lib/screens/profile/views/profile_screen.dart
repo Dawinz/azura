@@ -39,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: _user == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(defaultPadding),
               child: Column(
                 children: [
@@ -67,7 +67,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.person,
                       title: "My Account",
                       press: () {
-                        Navigator.pushNamed(context, userInfoScreenRoute);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) =>
+                                AccountDetailsScreen(user: _user!),
+                          ),
+                        );
                       }),
                   ProfileMenu(
                       icon: Icons.notifications,
@@ -91,36 +96,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.help_center,
                       title: "Help Center",
                       press: () async {
-                        final uri = Uri.parse(
-                          'https://azura-frontend.vercel.app',
-                        );
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Could not open help link'),
-                              ),
-                            );
-                          }
+                        final messenger = ScaffoldMessenger.of(context);
+                        final uri = Uri.parse('https://azuramall.shop/contact');
+                        if (!await canLaunchUrl(uri)) {
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Could not open help link'),
+                            ),
+                          );
+                          return;
                         }
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
                       }),
                   ProfileMenu(
                       icon: Icons.logout,
                       title: "Logout",
                       press: () async {
+                        final navigator = Navigator.of(context);
                         await StorageService.removeUser();
                         if (!mounted) return;
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
+                        navigator.pushNamedAndRemoveUntil(
                           logInScreenRoute,
                           (route) => false,
                         );
                       }),
+                  const SizedBox(height: defaultPadding),
                 ],
               ),
             ),
+    );
+  }
+}
+
+class AccountDetailsScreen extends StatelessWidget {
+  const AccountDetailsScreen({super.key, required this.user});
+
+  final UserModel user;
+
+  Widget _detailTile(String label, String value) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      subtitle: Text(value.isEmpty ? '-' : value),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Account')),
+      body: Padding(
+        padding: const EdgeInsets.all(defaultPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailTile('Name', user.name),
+            const Divider(height: 1),
+            _detailTile('Email', user.email),
+            const Divider(height: 1),
+            _detailTile('User ID', user.id),
+          ],
+        ),
+      ),
     );
   }
 }

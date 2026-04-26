@@ -111,18 +111,76 @@ class ProductModel {
     return AppConfig.resolveUploadUrl(path);
   }
 
+  /// Image from API: absolute URL or upload-relative path.
+  static String _resolveProductImage(dynamic raw) {
+    if (raw == null) return '';
+    final s = raw.toString();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    return _getImageUrl(s);
+  }
+
+  /// Minimal product row from GET /v1/product/list (Railway V1 API).
+  factory ProductModel.fromV1Summary(Map<String, dynamic> json) {
+    final priceVal = json['price'];
+    final double price = priceVal is num
+        ? priceVal.toDouble()
+        : double.tryParse(priceVal?.toString() ?? '') ?? 0;
+    final disc = json['discount_rate'];
+    final int? discountPercent = disc is int ? disc : int.tryParse('$disc');
+
+    return ProductModel(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'No Title',
+      slug: json['slug']?.toString() ?? '',
+      image: _resolveProductImage(json['image']),
+      productType: '',
+      listingType: '',
+      categoryId: json['category_id']?.toString() ?? '0',
+      price: price,
+      priceAfetDiscount: null,
+      dicountpercent: discountPercent,
+      currency: json['currency']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '0',
+      status: '1',
+      isPromoted: json['is_promoted']?.toString() ?? '0',
+      promoteStartDate: '',
+      promoteEndDate: '',
+      promotePlan: '',
+      promoteDay: '',
+      visibility: '1',
+      rating: json['rating']?.toString() ?? '0',
+      externalLink: '',
+      filesIncluded: '',
+      shippingTime: '',
+      isSold: json['is_sold']?.toString() ?? '0',
+      isDeleted: '0',
+      isDraft: '0',
+      createdAt: json['created_at']?.toString() ?? '',
+      userUsername: '',
+      shopName: '',
+      userRole: '',
+      userSlug: '',
+      productUrl: '',
+    );
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final List<String> files = [];
     if (json['files'] != null) {
       for (var file in json['files']) {
-        files.add(_getImageUrl(file));
+        files.add(_resolveProductImage(file));
       }
     }
+    final priceVal = json['price'];
+    final double price = priceVal is num
+        ? priceVal.toDouble()
+        : double.tryParse(priceVal?.toString() ?? '0') ?? 0;
     return ProductModel(
-      id: json['id'],
-      title: json['title'] ?? 'No Title',
-      slug: json['slug'],
-      image: _getImageUrl(json['image']),
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'No Title',
+      slug: json['slug']?.toString() ?? '',
+      image: _resolveProductImage(json['image']),
       files: files,
       penjual: json['penjual'],
       provinsi: json['provinsi'],
@@ -130,46 +188,53 @@ class ProductModel {
       kecamatan: json['kecamatan'],
       hape: json['hape'],
       photoProfile: json['photo_profile'],
-      productType: json['product_type'],
-      listingType: json['listing_type'],
-      categoryId: json['category_id'],
-      subcategoryId: json['subcategory_id'],
-      thirdCategoryId: json['third_category_id'],
-      price: json['price'].toDouble(),
-      priceAfetDiscount: json['price_afet_discount']?.toDouble(),
+      productType: json['product_type']?.toString() ?? '',
+      listingType: json['listing_type']?.toString() ?? '',
+      categoryId: json['category_id']?.toString() ?? '',
+      subcategoryId: json['subcategory_id']?.toString(),
+      thirdCategoryId: json['third_category_id']?.toString(),
+      price: price,
+      priceAfetDiscount: json['price_afet_discount'] is num
+          ? (json['price_afet_discount'] as num).toDouble()
+          : double.tryParse(json['price_afet_discount']?.toString() ?? ''),
       dicountpercent: json['dicountpercent'],
-      currency: json['currency'],
-      description: json['description'],
-      productCondition: json['product_condition'],
-      countryId: json['country_id'],
-      stateId: json['state_id'],
-      cityId: json['city_id'],
-      address: json['address'],
-      zipCode: json['zip_code'],
-      userId: json['user_id'],
-      status: json['status'],
-      isPromoted: json['is_promoted'],
-      promoteStartDate: json['promote_start_date'],
-      promoteEndDate: json['promote_end_date'],
-      promotePlan: json['promote_plan'],
-      promoteDay: json['promote_day'],
-      visibility: json['visibility'],
-      rating: json['rating'],
-      hit: json['hit'],
-      externalLink: json['external_link'],
-      filesIncluded: json['files_included'],
-      shippingTime: json['shipping_time'],
-      shippingCostType: json['shipping_cost_type'],
-      shippingCost: json['shipping_cost'],
-      isSold: json['is_sold'],
-      isDeleted: json['is_deleted'],
-      isDraft: json['is_draft'],
-      createdAt: json['created_at'],
-      userUsername: json['user_username'],
-      shopName: json['shop_name'],
-      userRole: json['user_role'],
-      userSlug: json['user_slug'],
-      productUrl: json['product_url'],
+      currency: json['currency']?.toString() ?? '',
+      description: json['description']?.toString(),
+      productCondition: json['product_condition']?.toString(),
+      countryId: json['country_id']?.toString(),
+      stateId: json['state_id']?.toString(),
+      cityId: json['city_id']?.toString(),
+      address: json['address']?.toString(),
+      zipCode: json['zip_code']?.toString(),
+      userId: json['user_id']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      isPromoted: json['is_promoted']?.toString() ?? '0',
+      promoteStartDate: json['promote_start_date']?.toString() ?? '',
+      promoteEndDate: json['promote_end_date']?.toString() ?? '',
+      promotePlan: json['promote_plan']?.toString() ?? '',
+      promoteDay: json['promote_day']?.toString() ?? '',
+      visibility: json['visibility']?.toString() ?? '',
+      rating: json['rating']?.toString() ?? '0',
+      hit: json['hit']?.toString(),
+      externalLink: json['external_link']?.toString() ?? '',
+      filesIncluded: json['files_included']?.toString() ?? '',
+      shippingTime: json['shipping_time']?.toString() ?? '',
+      shippingCostType: json['shipping_cost_type']?.toString(),
+      shippingCost: () {
+        final sc = json['shipping_cost'];
+        if (sc == null) return null;
+        if (sc is int) return sc;
+        return int.tryParse(sc.toString());
+      }(),
+      isSold: json['is_sold']?.toString() ?? '0',
+      isDeleted: json['is_deleted']?.toString() ?? '0',
+      isDraft: json['is_draft']?.toString() ?? '0',
+      createdAt: json['created_at']?.toString() ?? '',
+      userUsername: json['user_username']?.toString() ?? '',
+      shopName: json['shop_name']?.toString() ?? '',
+      userRole: json['user_role']?.toString() ?? '',
+      userSlug: json['user_slug']?.toString() ?? '',
+      productUrl: json['product_url']?.toString() ?? '',
     );
   }
 

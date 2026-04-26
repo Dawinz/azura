@@ -20,10 +20,15 @@ class CategoryModel {
   }
 
   factory CategoryModel.fromMap(Map<String, dynamic> map) {
+    final idRaw = map['id'];
+    final id = idRaw is int
+        ? idRaw
+        : int.tryParse(idRaw?.toString() ?? '') ?? 0;
     return CategoryModel(
-      id: map['id']?.toInt() ?? 0,
-      title: map['title'] ?? '',
-      subtitle: map['subtitle'] ?? '',
+      id: id,
+      title: map['title']?.toString() ?? map['name']?.toString() ?? '',
+      subtitle:
+          map['subtitle']?.toString() ?? map['slug']?.toString() ?? '',
     );
   }
 

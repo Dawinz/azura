@@ -16,6 +16,9 @@ class BookmarkScreen extends StatelessWidget {
         future: ApiService.getProducts(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
+            if (snapshot.data!.isEmpty) {
+              return const Center(child: Text('No products available right now'));
+            }
             return CustomScrollView(
               slivers: [
                 SliverPadding(

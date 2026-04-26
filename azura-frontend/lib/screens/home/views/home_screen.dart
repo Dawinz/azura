@@ -4,11 +4,9 @@ import 'package:shop/components/product/product_card.dart';
 import 'package:shop/constants.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/route/route_constants.dart';
+import 'package:shop/screens/product/views/product_list_screen.dart';
 
-import 'components/categories.dart';
-import 'components/flash_sale.dart';
-import 'components/offer_carousel_and_categories.dart';
-import 'components/popular_products.dart';
+import 'components/offers_carousel_and_categories.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,8 +19,6 @@ class HomeScreen extends StatelessWidget {
           slivers: [
             const SliverToBoxAdapter(child: OffersCarouselAndCategories()),
             const SliverToBoxAdapter(child: SizedBox(height: defaultPadding)),
-            const SliverToBoxAdapter(child: FlashSale()),
-            const SliverToBoxAdapter(child: SizedBox(height: defaultPadding)),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
@@ -30,70 +26,73 @@ class HomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Best sellers",
+                      "Featured products",
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => const ProductListScreen(),
+                          ),
+                        );
+                      },
                       child: const Text("See All"),
-                    )
+                    ),
                   ],
                 ),
               ),
             ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 220,
-                child: FutureBuilder<List<ProductModel>>(
-                  future: ApiService.getProducts(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: snapshot.data!.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: EdgeInsets.only(
-                            left: defaultPadding,
-                            right: index == snapshot.data!.length - 1
-                                ? defaultPadding
-                                : 0,
-                          ),
-                          child: ProductCard(
-                            product: snapshot.data![index],
-                            press: () {
-                              Navigator.pushNamed(
-                                context,
-                                productDetailsScreenRoute,
-                                arguments: snapshot.data![index],
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: defaultPadding)),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(defaultPadding),
-                    child: Text(
-                      "Categories",
-                      style: Theme.of(context).textTheme.titleSmall,
+            FutureBuilder<List<ProductModel>>(
+              future: ApiService.getProducts(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final products = snapshot.data ?? const <ProductModel>[];
+                if (products.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(defaultPadding),
+                      child: Center(
+                        child: Text('Products will appear here soon'),
+                      ),
+                    ),
+                  );
+                }
+
+                return SliverPadding(
+                  padding: const EdgeInsets.all(defaultPadding),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.68,
+                      crossAxisSpacing: defaultPadding,
+                      mainAxisSpacing: defaultPadding,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final product = products[index];
+                        return ProductCard(
+                          product: product,
+                          press: () {
+                            Navigator.pushNamed(
+                              context,
+                              productDetailsScreenRoute,
+                              arguments: product,
+                            );
+                          },
+                        );
+                      },
+                      childCount: products.length,
                     ),
                   ),
-                  const Categories(),
-                ],
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: defaultPadding)),
-            const SliverToBoxAdapter(
-              child: PopularProducts(),
+                );
+              },
             )
           ],
         ),
