@@ -1,18 +1,31 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+require_once APPPATH . 'controllers/Flutter_v1_trait.php';
+
 /**
  * Simple API v1 controller for the Flutter app.
  * GET /v1/category/list returns categories as JSON.
  */
 class V1 extends CI_Controller {
 
+    use Flutter_v1_trait;
+
+    /** @var object|null Cached general_settings from config (avoids dynamic property issues on PHP 8.2+). */
+    public $general_settings;
+
+    /** @var bool */
+    public $auth_check = false;
+
     public function __construct() {
         parent::__construct();
         try {
             $this->load->database();
+            $this->general_settings = $this->config->item('general_settings');
+            // Keep constructor lightweight for API reliability; avoid non-essential DB queries here.
+            $this->auth_check = false;
             $this->_set_cors_headers();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->output->set_content_type('application/json');
             $this->output->set_status_header(500);
             $this->output->set_output(json_encode(array('success' => false, 'error' => 'Initialization error: ' . $e->getMessage())));
@@ -33,6 +46,10 @@ class V1 extends CI_Controller {
             'http://127.0.0.1:3000',
             'https://web-five-tau-70.vercel.app',
             'https://web-vi5fbwp80-dawson-s-projects.vercel.app',
+            'https://azuramall.shop',
+            'https://www.azuramall.shop',
+            'https://azuramall.com',
+            'https://www.azuramall.com',
         );
         
         // Allow any vercel.app subdomain or localhost
@@ -70,6 +87,13 @@ class V1 extends CI_Controller {
             $this->output->_display();
             exit;
         }
+    }
+
+    /** GET /v1/ping */
+    public function ping() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $this->output->set_output(json_encode(array('success' => true, 'message' => 'pong')));
     }
 
     /**
@@ -217,89 +241,106 @@ class V1 extends CI_Controller {
      */
     public function auth_login() {
         $this->output->set_content_type('application/json');
-        
-        // Ensure CORS headers are set before any output
         $this->_set_cors_headers();
-        
-        $this->load->model('auth_model');
-        $this->load->library('bcrypt');
+        try {
+            // Try multiple methods to get POST data (CodeIgniter might not parse form-urlencoded correctly)
+            $email = trim((string) $this->input->post('email'));
+            $password = (string) $this->input->post('password');
 
-        // Try multiple methods to get POST data (CodeIgniter might not parse form-urlencoded correctly)
-        $email = $this->input->post('email');
-        $password = $this->input->post('password');
-        
-        // Fallback: parse raw input if CodeIgniter didn't parse it
-        if (empty($email) || empty($password)) {
-            // Try raw input stream first
-            $raw_input = $this->input->raw_input_stream;
-            if (empty($raw_input)) {
-                $raw_input = file_get_contents('php://input');
-            }
-            
-            if (!empty($raw_input)) {
-                // Parse form-urlencoded data
-                parse_str($raw_input, $post_data);
-                if (empty($email) && isset($post_data['email'])) {
-                    $email = trim($post_data['email']);
+            if ($email === '' || $password === '') {
+                $raw_input = $this->input->raw_input_stream;
+                if (empty($raw_input)) {
+                    $raw_input = file_get_contents('php://input');
                 }
-                if (empty($password) && isset($post_data['password'])) {
-                    $password = $post_data['password'];
+                if (!empty($raw_input)) {
+                    parse_str($raw_input, $post_data);
+                    if ($email === '' && isset($post_data['email'])) {
+                        $email = trim((string) $post_data['email']);
+                    }
+                    if ($password === '' && isset($post_data['password'])) {
+                        $password = (string) $post_data['password'];
+                    }
                 }
-            }
-            
-            // Also try $_POST directly as last resort
-            if ((empty($email) || empty($password)) && !empty($_POST)) {
-                if (empty($email) && isset($_POST['email'])) {
-                    $email = trim($_POST['email']);
-                }
-                if (empty($password) && isset($_POST['password'])) {
-                    $password = $_POST['password'];
+                if (($email === '' || $password === '') && !empty($_POST)) {
+                    if ($email === '' && isset($_POST['email'])) {
+                        $email = trim((string) $_POST['email']);
+                    }
+                    if ($password === '' && isset($_POST['password'])) {
+                        $password = (string) $_POST['password'];
+                    }
                 }
             }
-        }
 
-        if (empty($email) || empty($password)) {
-            $this->output->set_status_header(400);
-            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Email and password required')));
-            return;
-        }
+            if ($email === '' || $password === '') {
+                $this->output->set_status_header(400);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Email and password required')));
+                return;
+            }
 
-        $user = $this->auth_model->get_user_by_email($email);
-        if (empty($user)) {
-            $this->output->set_status_header(401);
-            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid email or password')));
-            return;
-        }
+            // Query directly to avoid model/library compatibility issues on production runtimes.
+            $this->db->where('email', $email);
+            $this->db->limit(1);
+            $user = $this->db->get('users')->row();
+            if (empty($user)) {
+                $this->output->set_status_header(401);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid email or password')));
+                return;
+            }
 
-        if (!$this->bcrypt->check_password($password, $user->password)) {
-            $this->output->set_status_header(401);
-            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid email or password')));
-            return;
-        }
+            $valid_password = false;
+            if (!empty($user->password)) {
+                $valid_password = password_verify($password, (string) $user->password);
+                if (!$valid_password) {
+                    // Backward compatibility for legacy hashes/checker.
+                    try {
+                        $this->load->library('bcrypt');
+                        $valid_password = (bool) $this->bcrypt->check_password($password, $user->password);
+                    } catch (Throwable $e) {
+                        $valid_password = false;
+                    }
+                }
+            }
+            if (!$valid_password) {
+                $this->output->set_status_header(401);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid email or password')));
+                return;
+            }
 
-        if ($user->email_status != 1) {
-            $this->output->set_status_header(403);
-            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Email not verified')));
-            return;
-        }
+            if ((int) $user->email_status !== 1) {
+                $this->output->set_status_header(403);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Email not verified')));
+                return;
+            }
+            if ((int) $user->banned === 1) {
+                $this->output->set_status_header(403);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Account banned')));
+                return;
+            }
 
-        if ($user->banned == 1) {
-            $this->output->set_status_header(403);
-            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Account banned')));
-            return;
+            $display_name = trim(((string) ($user->first_name ?? '')) . ' ' . ((string) ($user->last_name ?? '')));
+            if ($display_name === '') {
+                $display_name = (string) ($user->username ?? '');
+            }
+            $this->output->set_output(json_encode(array(
+                'success' => true,
+                'id' => (int) $user->id,
+                'name' => $display_name,
+                'username' => (string) ($user->username ?? ''),
+                'email' => (string) ($user->email ?? ''),
+                'first_name' => (string) ($user->first_name ?? ''),
+                'last_name' => (string) ($user->last_name ?? ''),
+                'role' => (string) ($user->role ?? ''),
+                'avatar' => (string) ($user->avatar ?? ''),
+                'token' => !empty($user->token) ? (string) $user->token : '',
+            )));
+        } catch (Throwable $e) {
+            log_message('error', 'V1 auth_login: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $detail = (defined('ENVIRONMENT') && ENVIRONMENT !== 'production')
+                ? $e->getMessage()
+                : 'Login failed due to server error';
+            $this->output->set_output(json_encode(array('success' => false, 'error' => $detail)));
         }
-
-        // Return user data (Flutter expects UserModel format)
-        $this->output->set_output(json_encode(array(
-            'success' => true,
-            'id' => (int) $user->id,
-            'username' => $user->username,
-            'email' => $user->email,
-            'first_name' => $user->first_name ?: '',
-            'last_name' => $user->last_name ?: '',
-            'role' => $user->role,
-            'avatar' => $user->avatar ?: '',
-        )));
     }
 
     /**
@@ -364,42 +405,50 @@ class V1 extends CI_Controller {
      */
     public function category_list() {
         $this->output->set_content_type('application/json');
-        $lang_id = (int) $this->input->get('lang_id');
-        if ($lang_id < 1) {
-            $lang_id = 1;
-        }
+        $this->_set_cors_headers();
+        try {
+            $lang_id = (int) $this->input->get('lang_id');
+            if ($lang_id < 1) {
+                $lang_id = 1;
+            }
 
-        $this->db->select('c.id, c.slug, c.parent_id, c.category_order, c.image');
-        $this->db->select('(SELECT name FROM categories_lang WHERE category_id = c.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS name');
-        $this->db->from('categories c');
-        $this->db->where('c.visibility', 1);
-        $this->db->order_by('c.parent_id', 'ASC');
-        $this->db->order_by('c.category_order', 'ASC');
-        $query = $this->db->get();
-        if ($query->num_rows() == 0) {
-            // Fallback: return all categories (visibility any) in case seed data uses 0
             $this->db->select('c.id, c.slug, c.parent_id, c.category_order, c.image');
-            $this->db->select('(SELECT name FROM categories_lang WHERE category_id = c.id LIMIT 1) AS name');
+            $this->db->select('(SELECT name FROM categories_lang WHERE category_id = c.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS name');
             $this->db->from('categories c');
+            $this->db->where('c.visibility', 1);
             $this->db->order_by('c.parent_id', 'ASC');
             $this->db->order_by('c.category_order', 'ASC');
             $query = $this->db->get();
-        }
-        $rows = $query->result();
+            if ($query->num_rows() == 0) {
+                // Fallback: return all categories (visibility any) in case seed data uses 0
+                $this->db->select('c.id, c.slug, c.parent_id, c.category_order, c.image');
+                $this->db->select('(SELECT name FROM categories_lang WHERE category_id = c.id LIMIT 1) AS name');
+                $this->db->from('categories c');
+                $this->db->order_by('c.parent_id', 'ASC');
+                $this->db->order_by('c.category_order', 'ASC');
+                $query = $this->db->get();
+            }
+            $rows = $query->result();
 
-        $base_url = $this->config->item('base_url');
-        $list = array();
-        foreach ($rows as $row) {
-            $list[] = array(
-                'id' => (int) $row->id,
-                'name' => $row->name ?: '',
-                'slug' => $row->slug ?: '',
-                'parent_id' => (int) $row->parent_id,
-                'category_order' => (int) $row->category_order,
-                'image' => $row->image ? $base_url . $row->image : null,
-            );
+            $base_url = $this->config->item('base_url');
+            $list = array();
+            foreach ($rows as $row) {
+                $list[] = array(
+                    'id' => (int) $row->id,
+                    'name' => $row->name ?: '',
+                    'slug' => $row->slug ?: '',
+                    'parent_id' => (int) $row->parent_id,
+                    'category_order' => (int) $row->category_order,
+                    'image' => $row->image ? $base_url . $row->image : null,
+                );
+            }
+            $this->output->set_output(json_encode(array('success' => true, 'data' => $list)));
+        } catch (Throwable $e) {
+            log_message('error', 'V1 category_list: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $detail = (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') ? $e->getMessage() : 'Category query failed';
+            $this->output->set_output(json_encode(array('success' => false, 'error' => $detail)));
         }
-        $this->output->set_output(json_encode(array('success' => true, 'data' => $list)));
     }
 
     /**
@@ -408,65 +457,74 @@ class V1 extends CI_Controller {
      */
     public function product_list() {
         $this->output->set_content_type('application/json');
-        $page = max(1, (int) $this->input->get('page'));
-        $per_page = min(50, max(1, (int) $this->input->get('per_page') ?: 20));
-        $category_id = $this->input->get('category_id') ? (int) $this->input->get('category_id') : null;
-        $lang_id = max(1, (int) $this->input->get('lang_id') ?: 1);
+        $this->_set_cors_headers();
+        try {
+            $page = max(1, (int) $this->input->get('page'));
+            $per_page = min(50, max(1, (int) $this->input->get('per_page') ?: 20));
+            $category_id = $this->input->get('category_id') ? (int) $this->input->get('category_id') : null;
+            $lang_id = max(1, (int) $this->input->get('lang_id') ?: 1);
 
-        $this->db->from('products p');
-        $this->db->where('p.status', 1);
-        $this->db->where('p.visibility', 1);
-        $this->db->where('p.is_deleted', 0);
-        $this->db->where('p.is_draft', 0);
-        if ($category_id > 0) {
-            $this->db->where('p.category_id', $category_id);
+            $this->db->from('products p');
+            $this->db->where('p.status', 1);
+            $this->db->where('p.visibility', 1);
+            $this->db->where('p.is_deleted', 0);
+            $this->db->where('p.is_draft', 0);
+            if ($category_id > 0) {
+                $this->db->where('p.category_id', $category_id);
+            }
+            $total = $this->db->count_all_results();
+
+            $this->db->select('p.id, p.category_id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at');
+            $this->db->select('(SELECT title FROM product_details WHERE product_id = p.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS title');
+            $this->db->select('(SELECT image_small FROM images WHERE product_id = p.id AND is_main = 1 LIMIT 1) AS image');
+            $this->db->from('products p');
+            $this->db->where('p.status', 1);
+            $this->db->where('p.visibility', 1);
+            $this->db->where('p.is_deleted', 0);
+            $this->db->where('p.is_draft', 0);
+            if ($category_id > 0) {
+                $this->db->where('p.category_id', $category_id);
+            }
+            $this->db->order_by('p.created_at', 'DESC');
+            $this->db->limit($per_page, ($page - 1) * $per_page);
+            $query = $this->db->get();
+
+            $base_url = $this->config->item('base_url');
+            $list = array();
+            foreach ($query->result() as $row) {
+                $img = isset($row->image) ? $row->image : null;
+                $list[] = array(
+                    'id' => (int) $row->id,
+                    'category_id' => isset($row->category_id) ? (int) $row->category_id : 0,
+                    'title' => $row->title ?: '',
+                    'slug' => $row->slug ?: '',
+                    'price' => (int) $row->price,
+                    'currency' => $row->currency ?: '',
+                    'discount_rate' => (int) $row->discount_rate,
+                    'user_id' => (int) $row->user_id,
+                    'rating' => $row->rating ?: '0',
+                    'is_promoted' => (int) $row->is_promoted,
+                    'is_sold' => (int) $row->is_sold,
+                    'image' => $img ? $base_url . $img : null,
+                    'created_at' => $row->created_at,
+                );
+            }
+
+            $this->output->set_output(json_encode(array(
+                'success' => true,
+                'data' => $list,
+                'pagination' => array(
+                    'current_page' => $page,
+                    'per_page' => $per_page,
+                    'total' => $total,
+                ),
+            )));
+        } catch (Throwable $e) {
+            log_message('error', 'V1 product_list: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $detail = (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') ? $e->getMessage() : 'Product query failed';
+            $this->output->set_output(json_encode(array('success' => false, 'error' => $detail)));
         }
-        $total = $this->db->count_all_results();
-
-        $this->db->select('p.id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at');
-        $this->db->select('(SELECT title FROM product_details WHERE product_id = p.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS title');
-        $this->db->select('(SELECT image_small FROM images WHERE product_id = p.id AND is_main = 1 LIMIT 1) AS image');
-        $this->db->from('products p');
-        $this->db->where('p.status', 1);
-        $this->db->where('p.visibility', 1);
-        $this->db->where('p.is_deleted', 0);
-        $this->db->where('p.is_draft', 0);
-        if ($category_id > 0) {
-            $this->db->where('p.category_id', $category_id);
-        }
-        $this->db->order_by('p.created_at', 'DESC');
-        $this->db->limit($per_page, ($page - 1) * $per_page);
-        $query = $this->db->get();
-
-        $base_url = $this->config->item('base_url');
-        $list = array();
-        foreach ($query->result() as $row) {
-            $img = isset($row->image) ? $row->image : null;
-            $list[] = array(
-                'id' => (int) $row->id,
-                'title' => $row->title ?: '',
-                'slug' => $row->slug ?: '',
-                'price' => (int) $row->price,
-                'currency' => $row->currency ?: '',
-                'discount_rate' => (int) $row->discount_rate,
-                'user_id' => (int) $row->user_id,
-                'rating' => $row->rating ?: '0',
-                'is_promoted' => (int) $row->is_promoted,
-                'is_sold' => (int) $row->is_sold,
-                'image' => $img ? $base_url . $img : null,
-                'created_at' => $row->created_at,
-            );
-        }
-
-        $this->output->set_output(json_encode(array(
-            'success' => true,
-            'data' => $list,
-            'pagination' => array(
-                'current_page' => $page,
-                'per_page' => $per_page,
-                'total' => $total,
-            ),
-        )));
     }
 
     /**

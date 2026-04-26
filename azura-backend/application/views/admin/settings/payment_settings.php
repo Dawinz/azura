@@ -555,6 +555,84 @@
 
 <div class="row">
     <div class="col-lg-6 col-md-12">
+        <?php $selcom = get_payment_gateway('selcom');
+        if (!empty($selcom)): ?>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title"><?= $selcom->name; ?></h3>
+                </div>
+                <?php echo form_open('settings_controller/payment_gateway_settings_post'); ?>
+                <input type="hidden" name="name_key" value="selcom">
+                <div class="box-body">
+                    <img src="<?php echo base_url(); ?>assets/img/payment/mpesa.svg" alt="selcom" class="img-payment-logo">
+                    <?php if (!empty($this->session->flashdata("mes_selcom"))):
+                        $this->load->view('admin/includes/_messages');
+                    endif; ?>
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-4 col-sm-12">
+                                <label><?= trans("status"); ?></label>
+                            </div>
+                            <div class="col-md-4 col-sm-12 col-option">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" name="status" value="1" id="status_selcom_1" class="custom-control-input" <?= $selcom->status == 1 ? 'checked' : ''; ?>>
+                                    <label for="status_selcom_1" class="custom-control-label"><?php echo trans("enable"); ?></label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-12 col-option">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" name="status" value="0" id="status_selcom_2" class="custom-control-input" <?= $selcom->status != 1 ? 'checked' : ''; ?>>
+                                    <label for="status_selcom_2" class="custom-control-label"><?php echo trans("disable"); ?></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-4 col-sm-12">
+                                <label><?= trans("mode"); ?></label>
+                            </div>
+                            <div class="col-md-4 col-sm-12 col-option">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" name="environment" value="production" id="environment_selcom_1" class="custom-control-input" <?= $selcom->environment == 'production' ? 'checked' : ''; ?>>
+                                    <label for="environment_selcom_1" class="custom-control-label"><?php echo trans("production"); ?></label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-12 col-option">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" name="environment" value="sandbox" id="environment_selcom_2" class="custom-control-input" <?= $selcom->environment != 'production' ? 'checked' : ''; ?>>
+                                    <label for="environment_selcom_2" class="custom-control-label"><?php echo trans("sandbox"); ?></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">Vendor ID</label>
+                        <input type="text" class="form-control" name="locale" placeholder="VENDOR/TILL ID" value="<?= html_escape($selcom->locale); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">API Key</label>
+                        <input type="text" class="form-control" name="public_key" placeholder="API KEY" value="<?= html_escape($selcom->public_key); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">API Secret</label>
+                        <input type="text" class="form-control" name="secret_key" placeholder="API SECRET" value="<?= html_escape($selcom->secret_key); ?>">
+                    </div>
+                    <div class="form-group">
+                        <small class="text-muted">Set your Selcom vendor id, api key and api secret to enable checkout redirect and payment verification.</small>
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-primary pull-right"><?php echo trans('save_changes'); ?></button>
+                </div>
+                <?php echo form_close(); ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 col-md-12">
         <div class="box box-primary">
             <div class="box-header with-border">
                 <h3 class="box-title"><?php echo trans('bank_transfer'); ?></h3><br>

@@ -116,12 +116,21 @@ if (!function_exists('category_name')) {
 if (!function_exists('get_category_image_url')) {
     function get_category_image_url($category)
     {
+        $image = !empty($category->image) ? (string)$category->image : '';
+        if (trim($image, "/") === '') {
+            $image = '';
+        }
+        if ($image !== '' && (strpos($image, 'http://') === 0 || strpos($image, 'https://') === 0)) {
+            return $image;
+        }
+        if ($image === '') {
+            return base_url() . 'assets/img/img_bg_category.jpg';
+        }
         if ($category->storage == "aws_s3") {
             $ci =& get_instance();
-            return $ci->aws_base_url . $category->image;
-        } else {
-            return base_url() . $category->image;
+            return $ci->aws_base_url . $image;
         }
+        return base_url() . ltrim($image, '/');
     }
 }
 
@@ -208,11 +217,17 @@ if (!function_exists('get_product_item_image')) {
             if (!empty($image)) {
                 $image_array = explode("::", $image);
                 if (!empty($image_array[0]) && !empty($image_array[1])) {
+                    if (strpos($image_array[1], 'http://') === 0 || strpos($image_array[1], 'https://') === 0) {
+                        return $image_array[1];
+                    }
                     if ($image_array[0] == "aws_s3") {
                         return $ci->aws_base_url . "uploads/images/" . $image_array[1];
                     } else {
                         return base_url() . "uploads/images/" . $image_array[1];
                     }
+                }
+                if (strpos($image, 'http://') === 0 || strpos($image, 'https://') === 0) {
+                    return $image;
                 }
             }
         }

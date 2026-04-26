@@ -211,13 +211,40 @@ class Settings_model extends CI_Model
     //get payment gateway
     public function get_payment_gateway($name_key)
     {
+        if ($name_key == "selcom") {
+            $this->ensure_selcom_gateway();
+        }
         return $this->db->where('name_key', clean_slug($name_key))->get('payment_gateways')->row();
     }
 
     //get active payment gateways
     public function get_active_payment_gateways()
     {
+        $this->ensure_selcom_gateway();
         return $this->db->where('status', 1)->get('payment_gateways')->result();
+    }
+
+    //ensure selcom gateway exists in payment_gateways table
+    public function ensure_selcom_gateway()
+    {
+        $row = $this->db->where('name_key', 'selcom')->get('payment_gateways')->row();
+        if (!empty($row)) {
+            return $row;
+        }
+        $data = array(
+            'name' => 'Selcom',
+            'name_key' => 'selcom',
+            'public_key' => '',
+            'secret_key' => '',
+            'environment' => 'production',
+            // reused to store vendor/merchant id for Selcom
+            'locale' => '',
+            'base_currency' => 'TZS',
+            'status' => 0,
+            'logos' => 'mpesa,tigopesa,airtelmoney,halopesa',
+        );
+        $this->db->insert('payment_gateways', $data);
+        return $this->db->where('name_key', 'selcom')->get('payment_gateways')->row();
     }
 
     //update bank transfer settings

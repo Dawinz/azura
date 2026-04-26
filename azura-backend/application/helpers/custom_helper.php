@@ -602,7 +602,7 @@ if (!function_exists('get_logo')) {
                 return base_url() . $settings->logo;
             }
         }
-        return base_url() . "assets/img/logo.svg";
+        return base_url() . "assets/img/logo.png";
     }
 }
 
@@ -743,10 +743,14 @@ if (!function_exists('get_product_image')) {
         if (empty($image)) {
             return base_url() . 'assets/img/no-image.jpg';
         } else {
+            $image_name = isset($image->$size_name) ? (string)$image->$size_name : '';
+            if ($image_name !== '' && (strpos($image_name, 'http://') === 0 || strpos($image_name, 'https://') === 0)) {
+                return $image_name;
+            }
             if ($image->storage == "aws_s3") {
-                return $ci->aws_base_url . "uploads/images/" . $image->$size_name;
+                return $ci->aws_base_url . "uploads/images/" . $image_name;
             } else {
-                return base_url() . "uploads/images/" . $image->$size_name;
+                return base_url() . "uploads/images/" . $image_name;
             }
         }
     }
@@ -756,11 +760,15 @@ if (!function_exists('get_product_image')) {
 if (!function_exists('get_product_image_url')) {
     function get_product_image_url($image, $size_name)
     {
+        $image_name = isset($image->$size_name) ? (string)$image->$size_name : '';
+        if ($image_name !== '' && (strpos($image_name, 'http://') === 0 || strpos($image_name, 'https://') === 0)) {
+            return $image_name;
+        }
         if ($image->storage == "aws_s3") {
             $ci =& get_instance();
-            return $ci->aws_base_url . "uploads/images/" . $image->$size_name;
+            return $ci->aws_base_url . "uploads/images/" . $image_name;
         } else {
-            return base_url() . "uploads/images/" . $image->$size_name;
+            return base_url() . "uploads/images/" . $image_name;
         }
     }
 }
@@ -856,8 +864,14 @@ if (!function_exists('get_variation_main_option_image_url')) {
             }
         }
         if ($storage == "aws_s3") {
+            if ($image_name !== '' && (strpos($image_name, 'http://') === 0 || strpos($image_name, 'https://') === 0)) {
+                return $image_name;
+            }
             return $ci->aws_base_url . "uploads/images/" . $image_name;
         } else {
+            if ($image_name !== '' && (strpos($image_name, 'http://') === 0 || strpos($image_name, 'https://') === 0)) {
+                return $image_name;
+            }
             return base_url() . "uploads/images/" . $image_name;
         }
     }
@@ -868,10 +882,14 @@ if (!function_exists('get_variation_option_image_url')) {
     function get_variation_option_image_url($option_image)
     {
         $ci =& get_instance();
+        $image_name = isset($option_image->image_small) ? (string)$option_image->image_small : '';
+        if ($image_name !== '' && (strpos($image_name, 'http://') === 0 || strpos($image_name, 'https://') === 0)) {
+            return $image_name;
+        }
         if ($option_image->storage == "aws_s3") {
-            return $ci->aws_base_url . "uploads/images/" . $option_image->image_small;
+            return $ci->aws_base_url . "uploads/images/" . $image_name;
         } else {
-            return base_url() . "uploads/images/" . $option_image->image_small;
+            return base_url() . "uploads/images/" . $image_name;
         }
     }
 }

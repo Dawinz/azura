@@ -3,18 +3,22 @@
 <div class="row-custom<?php echo (!empty($product->image_second)) ? ' product-multiple-image' : ''; ?>">
 <a class="item-wishlist-button item-wishlist-enable <?php echo (is_product_in_wishlist($product) == 1) ? 'item-wishlist' : ''; ?>" data-product-id="<?php echo $product->id; ?>"></a>
 <div class="img-product-container">
+<?php
+$main_product_image = get_product_item_image($product);
+$second_product_image = get_product_item_image($product, true);
+?>
 <?php if (!empty($is_slider)): ?>
 <a href="<?php echo generate_product_url($product); ?>">
-<img src="<?php echo base_url() . IMG_BG_PRODUCT_SMALL; ?>" data-lazy="<?php echo get_product_item_image($product); ?>" alt="<?php echo get_product_title($product); ?>" class="img-fluid img-product">
+<img src="<?php echo $main_product_image; ?>" data-lazy="<?php echo $main_product_image; ?>" alt="<?php echo get_product_title($product); ?>" class="img-fluid img-product">
 <?php if (!empty($product->image_second)): ?>
-<img src="<?php echo base_url() . IMG_BG_PRODUCT_SMALL; ?>" data-lazy="<?php echo get_product_item_image($product, true); ?>" alt="<?php echo get_product_title($product); ?>" class="img-fluid img-product img-second">
+<img src="<?php echo $second_product_image; ?>" data-lazy="<?php echo $second_product_image; ?>" alt="<?php echo get_product_title($product); ?>" class="img-fluid img-product img-second">
 <?php endif; ?>
 </a>
 <?php else: ?>
 <a href="<?php echo generate_product_url($product); ?>">
-<img src="<?php echo base_url() . IMG_BG_PRODUCT_SMALL; ?>" data-src="<?php echo get_product_item_image($product); ?>" alt="<?php echo get_product_title($product); ?>" class="lazyload img-fluid img-product">
+<img src="<?php echo $main_product_image; ?>" data-src="<?php echo $main_product_image; ?>" alt="<?php echo get_product_title($product); ?>" class="lazyload img-fluid img-product">
 <?php if (!empty($product->image_second)): ?>
-<img src="<?php echo base_url() . IMG_BG_PRODUCT_SMALL; ?>" data-src="<?php echo get_product_item_image($product, true); ?>" alt="<?php echo get_product_title($product); ?>" class="lazyload img-fluid img-product img-second">
+<img src="<?php echo $second_product_image; ?>" data-src="<?php echo $second_product_image; ?>" alt="<?php echo get_product_title($product); ?>" class="lazyload img-fluid img-product img-second">
 <?php endif; ?>
 </a>
 <?php endif; ?>

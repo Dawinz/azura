@@ -15,7 +15,7 @@
                     <div class="row row-product" id="category_products_slider_<?= $category->id; ?>">
                         <?php if (!empty($categories_products_array[$category->id])):
                             foreach ($categories_products_array[$category->id] as $product): ?>
-                                <div class="col-6 col-sm-4 col-md-3 col-mds-5 col-product">
+                                <div class="col-6 col-sm-6 col-md-4 col-lg-3 col-product">
                                     <?php $this->load->view('product/_product_item', ['product' => $product, 'promoted_badge' => false, 'is_slider' => 1, 'discount_label' => 0]); ?>
                                 </div>
                             <?php endforeach;
@@ -37,7 +37,7 @@
                 <div class="row row-product">
                     <?php if (!empty($categories_products_array[$category->id])):
                         foreach ($categories_products_array[$category->id] as $product): ?>
-                            <div class="col-6 col-sm-4 col-md-3 col-mds-5 col-product">
+                            <div class="col-6 col-sm-6 col-md-4 col-lg-3 col-product">
                                 <?php $this->load->view('product/_product_item', ['product' => $product, 'promoted_badge' => false, 'is_slider' => 0, 'discount_label' => 0]); ?>
                             </div>
                         <?php endforeach;

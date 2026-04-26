@@ -813,6 +813,238 @@ class Cart_controller extends Home_Core_Controller
     }
 
     /**
+     * Payment with Selcom
+     */
+    public function selcom_payment_post()
+    {
+        $selcom = get_payment_gateway('selcom');
+        if (empty($selcom) || empty($selcom->public_key) || empty($selcom->secret_key) || empty($selcom->locale)) {
+            $this->session->set_flashdata('error', 'Selcom settings are incomplete. Please configure Vendor ID, API Key and API Secret.');
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+        $payment_session = $this->session->userdata('mds_payment_cart_data');
+        if (empty($payment_session)) {
+            $this->session->set_flashdata('error', trans("invalid_attempt"));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $customer = get_cart_customer_data();
+        $orderId = $payment_session->mds_payment_token;
+        $paymentType = $this->input->post('mds_payment_type', true);
+        if (empty($paymentType)) {
+            $paymentType = $payment_session->payment_type;
+        }
+        $returnUrl = base_url() . "selcom-payment-return?payment_type=" . rawurlencode($paymentType) . "&order_id=" . rawurlencode($orderId);
+        $webhookUrl = base_url() . "selcom-payment-webhook?order_id=" . rawurlencode($orderId);
+
+        $buyerName = !empty($customer) ? trim($customer->first_name . ' ' . $customer->last_name) : '';
+        if ($buyerName == '') {
+            $buyerName = 'Guest Customer';
+        }
+        $payload = array(
+            'vendor' => trim($selcom->locale),
+            'order_id' => $orderId,
+            'buyer_email' => !empty($customer->email) ? $customer->email : 'guest@azuramall.local',
+            'buyer_name' => $buyerName,
+            'buyer_phone' => !empty($customer->phone_number) ? preg_replace('/\s+/', '', $customer->phone_number) : '255700000000',
+            'amount' => (float)$payment_session->total_amount,
+            'currency' => strtoupper($payment_session->currency),
+            'payment_methods' => 'ALL',
+            'redirect_url' => base64_encode($returnUrl),
+            'cancel_url' => base64_encode($returnUrl . "&cancelled=1"),
+            'webhook' => base64_encode($webhookUrl),
+            'buyer_remarks' => 'Order ' . $orderId,
+            'merchant_remarks' => 'Azura Mall checkout',
+            'no_of_items' => 1
+        );
+
+        $response = $this->selcom_api_request($selcom, '/v1/checkout/create-order-minimal', 'POST', $payload, array(
+            'vendor', 'order_id', 'buyer_email', 'buyer_name', 'buyer_phone', 'amount', 'currency', 'payment_methods',
+            'redirect_url', 'cancel_url', 'webhook', 'buyer_remarks', 'merchant_remarks', 'no_of_items'
+        ));
+
+        if (empty($response) || !isset($response['result']) || strtoupper((string)$response['result']) != 'SUCCESS') {
+            $this->session->set_flashdata('error', !empty($response['message']) ? $response['message'] : trans("msg_error"));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $gatewayUrl = '';
+        if (!empty($response['data'][0]['payment_gateway_url'])) {
+            $rawUrl = $response['data'][0]['payment_gateway_url'];
+            $decoded = base64_decode($rawUrl, true);
+            $gatewayUrl = !empty($decoded) ? $decoded : $rawUrl;
+        }
+        if (empty($gatewayUrl)) {
+            $this->session->set_flashdata('error', 'Selcom did not return a checkout URL.');
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $this->session->set_userdata('mds_selcom_order_id', $orderId);
+        redirect($gatewayUrl);
+        exit();
+    }
+
+    /**
+     * Selcom return callback (browser redirect)
+     */
+    public function selcom_payment_return()
+    {
+        $selcom = get_payment_gateway('selcom');
+        $payment_session = $this->session->userdata('mds_payment_cart_data');
+        if (empty($selcom) || empty($payment_session)) {
+            $this->session->set_flashdata('error', trans("invalid_attempt"));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $cancelled = input_get('cancelled');
+        if (!empty($cancelled)) {
+            $this->session->set_flashdata('error', 'Payment cancelled by user.');
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $orderId = input_get('order_id');
+        if (empty($orderId)) {
+            $orderId = $this->session->userdata('mds_selcom_order_id');
+        }
+        if (empty($orderId)) {
+            $this->session->set_flashdata('error', trans("msg_error"));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $statusResponse = $this->selcom_api_request($selcom, '/v1/checkout/order-status', 'GET', array('order_id' => $orderId), array('order_id'));
+        if (empty($statusResponse) || strtoupper((string)($statusResponse['result'] ?? '')) != 'SUCCESS') {
+            $this->session->set_flashdata('error', !empty($statusResponse['message']) ? $statusResponse['message'] : trans("msg_error"));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $statusData = !empty($statusResponse['data'][0]) ? $statusResponse['data'][0] : array();
+        $paymentStatus = strtoupper((string)($statusData['payment_status'] ?? ''));
+        if ($paymentStatus != 'COMPLETED') {
+            $this->session->set_flashdata('error', 'Payment is not completed yet. Current status: ' . ($paymentStatus != '' ? $paymentStatus : 'UNKNOWN'));
+            redirect(generate_url("cart", "payment"));
+            exit();
+        }
+
+        $txRef = !empty($statusData['reference']) ? $statusData['reference'] : (!empty($statusData['transid']) ? $statusData['transid'] : $orderId);
+        $data_transaction = array(
+            'payment_method' => $selcom->name,
+            'payment_id' => $txRef,
+            'currency' => !empty($statusData['currency']) ? strtoupper($statusData['currency']) : strtoupper($payment_session->currency),
+            'payment_amount' => !empty($statusData['amount']) ? (float)$statusData['amount'] : (float)$payment_session->total_amount,
+            'payment_status' => "Succeeded"
+        );
+
+        $response = $this->execute_payment($data_transaction, $payment_session->payment_type, lang_base_url());
+        if ($response->result == 1) {
+            $this->session->set_flashdata('success', $response->message);
+            redirect($response->redirect_url);
+        } else {
+            $this->session->set_flashdata('error', $response->message);
+            redirect($response->redirect_url);
+        }
+    }
+
+    /**
+     * Selcom server-to-server callback (ack only)
+     */
+    public function selcom_payment_webhook()
+    {
+        $payload = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            $payload = array();
+        }
+        log_message('info', 'Selcom webhook: ' . json_encode($payload));
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array(
+                'result' => 'SUCCESS',
+                'resultcode' => '000',
+                'message' => 'ACK'
+            )));
+    }
+
+    private function selcom_api_request($selcom, $path, $method, $payload, $signedFields)
+    {
+        $baseUrl = $this->selcom_base_url($selcom);
+        $timestamp = date('Y-m-d H:i:s');
+        $query = '';
+        $body = '';
+        $url = rtrim($baseUrl, '/') . $path;
+        if (strtoupper($method) === 'GET') {
+            $query = http_build_query($payload);
+            if (!empty($query)) {
+                $url .= '?' . $query;
+            }
+        } else {
+            $body = json_encode($payload);
+        }
+
+        $digest = $this->selcom_digest($timestamp, $payload, $signedFields, trim($selcom->secret_key));
+        $headers = array(
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Authorization: SELCOM ' . base64_encode(trim($selcom->public_key)),
+            'Digest-Method: HS256',
+            'Digest: ' . $digest,
+            'Timestamp: ' . $timestamp,
+            'Signed-Fields: ' . implode(',', $signedFields)
+        );
+
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => strtoupper($method),
+            CURLOPT_HTTPHEADER => $headers,
+        ));
+        if (strtoupper($method) !== 'GET') {
+            curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+        }
+        $response = curl_exec($curl);
+        curl_close($curl);
+        $decoded = json_decode($response, true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    private function selcom_digest($timestamp, $payload, $signedFields, $apiSecret)
+    {
+        $parts = array('timestamp=' . $timestamp);
+        foreach ($signedFields as $field) {
+            $value = isset($payload[$field]) ? $payload[$field] : '';
+            if (is_array($value) || is_object($value)) {
+                $value = json_encode($value);
+            }
+            $parts[] = $field . '=' . (string)$value;
+        }
+        $signingString = implode('&', $parts);
+        return base64_encode(hash_hmac('sha256', $signingString, $apiSecret, true));
+    }
+
+    private function selcom_base_url($selcom)
+    {
+        if (!empty($_ENV['SELCOM_BASE_URL'])) {
+            return trim($_ENV['SELCOM_BASE_URL']);
+        }
+        if (!empty($selcom->environment) && $selcom->environment == 'sandbox') {
+            return 'https://apigwtest.selcommobile.com';
+        }
+        return 'https://apigw.selcommobile.com';
+    }
+
+    /**
      * Execute Sale Payment
      */
     public function execute_payment($data_transaction, $payment_type, $base_url)

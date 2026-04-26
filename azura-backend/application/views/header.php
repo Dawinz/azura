@@ -73,7 +73,7 @@
             <div class="container content-container px-4 pt-1 pb-4">
                 <div class="container logo-container my-4">
                     <a href="<?= base_url()?>">
-                        <img src="<?= base_url('assets/img/logo.png') ?>" width="100" height="72" class="" />
+                        <img src="<?= base_url('assets/img/logo.png') ?>" width="96" height="96" class="" alt="Azura Mall" />
                     </a>
                 </div>
     
