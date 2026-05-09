@@ -169,27 +169,12 @@
                                 <div class="tab-checkout tab-checkout-open">
                                     <h2 class="title">2.&nbsp;&nbsp;<?php echo trans("payment_method"); ?></h2>
                                     <div class="payment-methods-container">
-                                        <?php echo form_open("https://azuramall.store/payx", ['id' => 'payment_method_form']); ?>
-                                        <?php 
-                                        // Get logged in user data
+                                        <?php echo form_open('selcom-payment-post', ['id' => 'payment_method_form']); ?>
+                                        <input type="hidden" name="mds_payment_type" value="sale">
+                                        <?php
                                         $user = $this->auth_user;
-                                        $user_email = !empty($user->email) ? $user->email : '';
                                         $user_phone = !empty($user->phone_number) ? $user->phone_number : '';
-                                        $user_name = !empty($user->username) ? $user->username : '';
-                                        
-                                        // Get total price
-                                        $total_price = 0;
-                                        if (isset($cart_total) && !empty($cart_total)) {
-                                            $total_price = $cart_total->total;
-                                        } elseif (isset($total) && !empty($total)) {
-                                            $total_price = $total;
-                                        }
                                         ?>
-                                        <input type="hidden" name="amount" value="<?= $total_price; ?>">
-                                        <input type="hidden" name="reference_id" value="<?= time(); ?>">
-                                        <input type="hidden" name="reference_number" value="<?= uniqid(); ?>">
-                                        <input type="hidden" name="logged_email" value="<?= $user_email; ?>">
-                                        <input type="hidden" name="logged_name" value="<?= $user_name; ?>">
                                         
                                         <!-- Payment Method Selection -->
                                         <div class="payment-method-options">
@@ -411,37 +396,27 @@
     }
 </style>
 
-<!-- JavaScript -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- JavaScript: no extra jQuery — footer already loads jQuery; use DOM APIs so this runs if footer order changes -->
 <script>
-    $(document).ready(function() {
-        // Payment method selection handler
-        $('.payment-method-option').click(function() {
-            // Update active state
-            $('.payment-method-option').removeClass('active');
-            $(this).addClass('active');
-            
-            // Get selected method
-            const method = $(this).data('method');
-            
-            // Toggle fields
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.payment-method-option').forEach(function (opt) {
+        opt.addEventListener('click', function () {
+            document.querySelectorAll('.payment-method-option').forEach(function (o) { o.classList.remove('active'); });
+            opt.classList.add('active');
+            var method = opt.getAttribute('data-method');
+            var mobile = document.getElementById('mobile_payment_fields');
+            var card = document.getElementById('card_payment_fields');
+            var label = document.querySelector('.checkout-button-container .btn-primary .button-content span:last-child');
             if (method === 'MOBILE') {
-                $('#card_payment_fields').hide();
-                $('#mobile_payment_fields').show();
+                if (card) { card.style.display = 'none'; }
+                if (mobile) { mobile.style.display = ''; }
+                if (label) { label.textContent = 'Pay with Selcom'; }
             } else if (method === 'CARD') {
-                $('#mobile_payment_fields').hide();
-                $('#card_payment_fields').show();
+                if (mobile) { mobile.style.display = 'none'; }
+                if (card) { card.style.display = ''; }
+                if (label) { label.textContent = 'Pay with Card'; }
             }
-            
-            // Update button text
-            $('.btn-primary span:last').text(method === 'MOBILE' ? 'Pay with Selcom' : 'Pay with Card');
-        });
-
-        // Form submission - direct redirect to azuramall.store/pay
-        $('#payment_method_form').submit(function(e) {
-            // No need for AJAX since we're doing direct form submission
-            // All processing will happen on azuramall.store/pay
-            return true;
         });
     });
+});
 </script>

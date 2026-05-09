@@ -189,6 +189,10 @@ class Cart_controller extends Home_Core_Controller
             $data['cart_seller_ids'] = $this->session->userdata('mds_array_cart_seller_ids');
         }
 
+        if ($this->auth_check) {
+            $this->prime_mds_payment_cart_session_sale($data['cart_items'], $data['cart_total']);
+        }
+
         $this->load->view('partials/_header', $data);
         if ($this->auth_check) {
             $this->load->view('cart/shipping_information', $data);
@@ -843,12 +847,23 @@ class Cart_controller extends Home_Core_Controller
         if ($buyerName == '') {
             $buyerName = 'Guest Customer';
         }
+        $buyerPhone = !empty($customer->phone_number) ? preg_replace('/\s+/', '', $customer->phone_number) : '255700000000';
+        $postCalling = $this->input->post('calling_code', true);
+        $postPhone = $this->input->post('phone', true);
+        if ($postCalling !== null && $postCalling !== '' && $postPhone !== null && trim((string) $postPhone) !== '') {
+            $cc = preg_replace('/\D+/', '', (string) $postCalling);
+            $digits = preg_replace('/\D+/', '', (string) $postPhone);
+            if ($cc !== '' && $digits !== '') {
+                $digits = ltrim($digits, '0');
+                $buyerPhone = $cc . $digits;
+            }
+        }
         $payload = array(
             'vendor' => trim($selcom->locale),
             'order_id' => $orderId,
             'buyer_email' => !empty($customer->email) ? $customer->email : 'guest@azuramall.local',
             'buyer_name' => $buyerName,
-            'buyer_phone' => !empty($customer->phone_number) ? preg_replace('/\s+/', '', $customer->phone_number) : '255700000000',
+            'buyer_phone' => $buyerPhone,
             'amount' => (float)$payment_session->total_amount,
             'currency' => strtoupper($payment_session->currency),
             'payment_methods' => 'ALL',
@@ -1495,6 +1510,31 @@ class Cart_controller extends Home_Core_Controller
             'amount' => $amount,
             'currency' => strtoupper((string) $payAmt->currency),
         )));
+    }
+
+    /**
+     * Payment session for embedded Selcom on cart/shipping (logged-in combined checkout).
+     * Mirrors cart/payment so selcom-payment-post has token, amount, and final cart snapshot.
+     */
+    private function prime_mds_payment_cart_session_sale($cart_items, $cart_total)
+    {
+        if (empty($cart_items) || empty($cart_total)) {
+            return;
+        }
+        $obj_amount = $this->cart_model->convert_currency_by_payment_gateway($cart_total->total, 'sale');
+        $total_amount = $obj_amount->total;
+        $currency = $obj_amount->currency;
+        if (filter_var($total_amount, FILTER_VALIDATE_INT) === false) {
+            $total_amount = number_format((float) $total_amount, 2, '.', '');
+        }
+        $sess_data = new stdClass();
+        $sess_data->mds_payment_token = generate_token();
+        $sess_data->currency = $currency;
+        $sess_data->total_amount = $total_amount;
+        $sess_data->payment_type = 'sale';
+        $this->session->set_userdata('mds_payment_cart_data', $sess_data);
+        $this->session->set_userdata('mds_shopping_cart_final', $cart_items);
+        $this->session->set_userdata('mds_shopping_cart_total_final', $cart_total);
     }
 
     /**
