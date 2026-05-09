@@ -23,14 +23,43 @@ defined('BASEPATH') or exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-// Support for Railway environment variables
-$railway_url = getenv('RAILWAY_PUBLIC_DOMAIN');
-if ($railway_url) {
-    $config['base_url'] = 'https://' . $railway_url . '/';
+// Resolve base URL from explicit env, then active request host, then Railway fallback.
+$app_base_url = trim((string) getenv('APP_BASE_URL'));
+if ($app_base_url !== '') {
+    $config['base_url'] = rtrim($app_base_url, '/') . '/';
 } else {
-    $root = (isset($_SERVER['HTTPS']) ? "https://" : "http://") . $_SERVER['HTTP_HOST'];
-    $root .= str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
-    $config['base_url'] = $root;
+    $host = '';
+    if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+        $hostParts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_HOST']);
+        $host = trim($hostParts[0]);
+    }
+    if ($host === '' && !empty($_SERVER['HTTP_HOST'])) {
+        $host = (string) $_SERVER['HTTP_HOST'];
+    }
+
+    $proto = 'http';
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        $protoParts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_PROTO']);
+        $forwardedProto = strtolower(trim($protoParts[0]));
+        if ($forwardedProto === 'https' || $forwardedProto === 'http') {
+            $proto = $forwardedProto;
+        }
+    } elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        $proto = 'https';
+    }
+
+    if ($host !== '') {
+        $root = $proto . '://' . $host;
+        $root .= str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
+        $config['base_url'] = $root;
+    } else {
+        $railway_url = trim((string) getenv('RAILWAY_PUBLIC_DOMAIN'));
+        if ($railway_url !== '') {
+            $config['base_url'] = 'https://' . $railway_url . '/';
+        } else {
+            $config['base_url'] = 'http://localhost/';
+        }
+    }
 }
 
 /*
