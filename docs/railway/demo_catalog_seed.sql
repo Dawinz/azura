@@ -1,6 +1,11 @@
 -- Azura Mall — demo catalog seed for Railway / MySQL
 -- Backup DB first. Inserts 31 physical demo SKUs (AZ-DEMO-###) with HTTPS gallery URLs,
 -- then adds placeholder images for any other products still missing an images row.
+--
+-- Git deploy does NOT run this file. Either execute this SQL in MySQL, or after deploying
+-- the backend set Railway env DEMO_SEED_KEY and POST JSON {"key":"..."} to:
+--   {your_storefront}/index.php/v1/demo/seed-catalog
+-- (endpoint is disabled when DEMO_SEED_KEY is unset). Then pull-to-refresh the app.
 
 SET @demo_seller := COALESCE(
   (SELECT id FROM users WHERE banned = 0 AND role = 'vendor' ORDER BY id LIMIT 1),
