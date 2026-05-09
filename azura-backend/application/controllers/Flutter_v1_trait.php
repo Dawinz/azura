@@ -108,6 +108,15 @@ trait Flutter_v1_trait {
                 $this->output->set_output(json_encode(array('success' => false, 'error' => 'Product not found')));
                 return;
             }
+            if (isset($p['product_type']) && (string) $p['product_type'] === 'digital') {
+                $mysqli->close();
+                $this->output->set_status_header(404);
+                $this->output->set_output(json_encode(array(
+                    'success' => false,
+                    'error' => 'This product is not available in the app. Please visit azuramall.shop in your browser.',
+                )));
+                return;
+            }
 
             $pid = (int) ($p['id'] ?? 0);
             $main_image = '';
@@ -237,9 +246,10 @@ trait Flutter_v1_trait {
         $this->db->where('p.visibility', 1);
         $this->db->where('p.is_deleted', 0);
         $this->db->where('p.is_draft', 0);
+        $this->db->where('p.product_type', 'physical');
         $total = $this->db->count_all_results();
 
-        $this->db->select('p.id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at');
+        $this->db->select('p.id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at, p.product_type');
         $this->db->select('(SELECT title FROM product_details WHERE product_id = p.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS title');
         $this->db->select('(SELECT image_small FROM images WHERE product_id = p.id AND is_main = 1 LIMIT 1) AS image');
         $this->db->from('products p');
@@ -248,6 +258,7 @@ trait Flutter_v1_trait {
         $this->db->where('p.visibility', 1);
         $this->db->where('p.is_deleted', 0);
         $this->db->where('p.is_draft', 0);
+        $this->db->where('p.product_type', 'physical');
         $this->db->order_by('p.created_at', 'DESC');
         $this->db->limit($per_page, ($page - 1) * $per_page);
         $query = $this->db->get();
@@ -267,6 +278,7 @@ trait Flutter_v1_trait {
                 'rating' => $row->rating ?: '0',
                 'is_promoted' => (int) $row->is_promoted,
                 'is_sold' => (int) $row->is_sold,
+                'product_type' => isset($row->product_type) ? (string) $row->product_type : 'physical',
                 'image' => $img ? $base_url . $img : null,
                 'created_at' => $row->created_at,
             );
@@ -329,7 +341,7 @@ trait Flutter_v1_trait {
         $sender = (int) (isset($in['user_id']) ? $in['user_id'] : 0);
         $receiver = (int) (isset($in['receiver_id']) ? $in['receiver_id'] : 0);
         $cid = (int) (isset($in['id_message']) ? $in['id_message'] : 0);
-        $body = isset($in['body_message']) ? trim($in['body_message']) : '');
+        $body = isset($in['body_message']) ? trim($in['body_message']) : '';
         if ($sender < 1 || $receiver < 1 || $cid < 1 || $body === '') {
             $this->output->set_status_header(400);
             $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid payload')));

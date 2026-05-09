@@ -667,6 +667,9 @@ class Cart_model extends CI_Model
             if (empty($product) || (int) $product->status !== 1) {
                 return array('error' => 'Product not available');
             }
+            if ($product->product_type === 'digital') {
+                return array('error' => 'Digital products cannot be purchased in the app. Please use azuramall.shop in your browser.');
+            }
             if ($product->product_type === 'physical' && (int) $this->product_settings->marketplace_shipping === 1) {
                 return array('error' => 'Physical items with shipping must be purchased on the website.');
             }
@@ -677,9 +680,6 @@ class Cart_model extends CI_Model
                         return array('error' => 'This product has options — purchase on the website.');
                     }
                 }
-            }
-            if ($product->product_type === 'digital') {
-                $qty = 1;
             }
             $item = new stdClass();
             $item->cart_item_id = generate_unique_id();

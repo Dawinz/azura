@@ -36,8 +36,19 @@ class _ProductBuyNowScreenState extends State<ProductBuyNowScreen> {
         title: "Add to cart",
         subTitle: "Total price",
         press: () {
-          Provider.of<CartProvider>(context, listen: false)
+          final ok = Provider.of<CartProvider>(context, listen: false)
               .addToCart(widget.product);
+          if (!context.mounted) return;
+          if (!ok) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'This item is not available for purchase in the app. Use azuramall.shop in a browser.',
+                ),
+              ),
+            );
+            return;
+          }
           customModalBottomSheet(
             context,
             isDismissible: false,
@@ -71,7 +82,8 @@ class _ProductBuyNowScreenState extends State<ProductBuyNowScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: defaultPadding),
                     child: AspectRatio(
                       aspectRatio: 1.05,
                       child: NetworkImageWithLoader(widget.product.image),

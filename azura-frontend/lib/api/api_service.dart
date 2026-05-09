@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import 'package:shop/core/app_config.dart';
 import 'package:shop/models/category_model.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/models/user_model.dart';
+import 'package:shop/services/catalog_cache_service.dart';
 
 class ApiService {
   static String get _baseUrl => AppConfig.apiEntryUrl;
@@ -12,42 +14,135 @@ class ApiService {
   /// V1 list: `{ "data": [ ... ] }`; legacy: `{ "data": { "product": [ ... ] } }`.
   static List<dynamic> _productListPayload(dynamic dataField) {
     if (dataField is List) return dataField;
-    if (dataField is Map && dataField['product'] is List) {
-      return dataField['product'] as List<dynamic>;
+    if (dataField is Map) {
+      for (final key in [
+        'product',
+        'products',
+        'items',
+        'list',
+        'rows',
+        'records',
+        'data',
+      ]) {
+        final v = dataField[key];
+        if (v is List) return v;
+      }
+      final single = dataField['product'];
+      if (single is Map<String, dynamic>) return <dynamic>[single];
+    }
+    return const [];
+  }
+
+  /// Top-level list, or `data` as list or map-wrapped list (avoids Map vs List cast errors).
+  static List<dynamic> _categoryListRows(dynamic decoded) {
+    if (decoded is List) return decoded;
+    if (decoded is! Map) return const [];
+    final data = decoded['data'];
+    if (data is List) return data;
+    if (data is Map) {
+      for (final key in [
+        'categories',
+        'category',
+        'items',
+        'list',
+        'rows',
+        'records',
+      ]) {
+        final v = data[key];
+        if (v is List) return v;
+      }
+      if (data.isNotEmpty) {
+        final vals = data.values.toList();
+        if (vals.isNotEmpty &&
+            vals.every((e) => e is Map || e is Map<String, dynamic>)) {
+          return vals;
+        }
+      }
     }
     return const [];
   }
 
   static ProductModel _productModelFromListItem(Map<String, dynamic> m) {
-    if (m.containsKey('product_type')) {
-      return ProductModel.fromJson(m);
-    }
     return ProductModel.fromV1Summary(m);
   }
 
+  /// Drops digital goods from in-app catalog (defense in depth; API also filters).
+  static List<ProductModel> _appStoreCatalogOnly(List<ProductModel> products) {
+    return products.where((p) => p.isPurchasableInApp).toList();
+  }
+
+  static const Duration _httpTimeout = Duration(seconds: 25);
+
   static Future<List<ProductModel>> getProducts() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/v1/product/list'));
-      if (response.statusCode == 200) {
-        // Check if response is JSON before parsing
-        final contentType = response.headers['content-type'] ?? '';
-        if (!contentType.contains('application/json')) {
-          throw Exception('Invalid response format from server');
-        }
-        try {
-          final responseData = json.decode(response.body) as Map<String, dynamic>;
-          final productList =
-              _productListPayload(responseData['data']).cast<Map<String, dynamic>>();
-          return productList.map(_productModelFromListItem).toList();
-        } catch (e) {
-          return [];
-        }
-      } else {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/v1/product/list'))
+          .timeout(_httpTimeout);
+      if (response.statusCode != 200) {
         return [];
       }
-    } catch (e) {
+      dynamic decoded;
+      try {
+        decoded = json.decode(response.body);
+      } catch (_) {
+        return [];
+      }
+      if (decoded is Map && decoded['success'] == false) {
+        return [];
+      }
+      final Map<String, dynamic>? root =
+          decoded is Map<String, dynamic> ? decoded : null;
+      if (root == null) {
+        return [];
+      }
+      dynamic dataField = root['data'];
+      if (dataField == null && root.containsKey('products')) {
+        dataField = root['products'];
+      }
+      final rawList = _productListPayload(dataField ?? root);
+      final mapped = rawList.map((e) {
+        if (e is! Map) {
+          throw const FormatException('Invalid product row');
+        }
+        return _productModelFromListItem(Map<String, dynamic>.from(e));
+      }).toList();
+      return _appStoreCatalogOnly(mapped);
+    } on TimeoutException {
+      return [];
+    } catch (_) {
       return [];
     }
+  }
+
+  /// Product grid (Bookmark, etc.): reads [CatalogCacheService] first so the app
+  /// does not hit the network on every cold start. Use [forceRefresh] after pull-to-refresh.
+  static Future<List<ProductModel>> getBrowseCatalog({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = await CatalogCacheService.load();
+      if (cached != null && cached.isNotEmpty) {
+        if (!await CatalogCacheService.isFresh()) {
+          _scheduleBrowseCatalogRefresh();
+        }
+        return _appStoreCatalogOnly(cached);
+      }
+    }
+
+    final list = await getProducts();
+    if (list.isNotEmpty) {
+      await CatalogCacheService.save(list);
+    }
+    return list;
+  }
+
+  static void _scheduleBrowseCatalogRefresh() {
+    Future<void>(() async {
+      try {
+        final list = await getProducts();
+        if (list.isNotEmpty) await CatalogCacheService.save(list);
+      } catch (_) {}
+    });
   }
 
   static Future<List<ProductModel>> getMostPopularProducts() async {
@@ -60,19 +155,28 @@ class ApiService {
           throw Exception('Invalid response format from server');
         }
         try {
-          final responseData = json.decode(response.body) as Map<String, dynamic>;
-          final productList =
-              _productListPayload(responseData['data']).cast<Map<String, dynamic>>();
-          return productList.map(_productModelFromListItem).toList();
+          final responseData =
+              json.decode(response.body) as Map<String, dynamic>;
+          final rawList = _productListPayload(responseData['data']);
+          final mapped = rawList.map((e) {
+            if (e is! Map) {
+              throw const FormatException('Invalid product row');
+            }
+            return _productModelFromListItem(Map<String, dynamic>.from(e));
+          }).toList();
+          return _appStoreCatalogOnly(mapped);
         } catch (e) {
           throw Exception('Failed to parse products response: ${e.toString()}');
         }
       } else {
-        throw Exception('Failed to load products (Status: ${response.statusCode})');
+        throw Exception(
+            'Failed to load products (Status: ${response.statusCode})');
       }
     } catch (e) {
-      if (e.toString().contains('502') || e.toString().contains('Bad Gateway')) {
-        throw Exception('Backend server is temporarily unavailable. Please try again.');
+      if (e.toString().contains('502') ||
+          e.toString().contains('Bad Gateway')) {
+        throw Exception(
+            'Backend server is temporarily unavailable. Please try again.');
       }
       rethrow;
     }
@@ -92,13 +196,15 @@ class ApiService {
       } else {
         list = await getProducts();
       }
-      return list
+      return _appStoreCatalogOnly(list)
           .where((p) => p.slug.isNotEmpty && p.slug != slug)
           .take(limit)
           .toList();
     } catch (e) {
-      if (e.toString().contains('502') || e.toString().contains('Bad Gateway')) {
-        throw Exception('Backend server is temporarily unavailable. Please try again.');
+      if (e.toString().contains('502') ||
+          e.toString().contains('Bad Gateway')) {
+        throw Exception(
+            'Backend server is temporarily unavailable. Please try again.');
       }
       rethrow;
     }
@@ -134,15 +240,18 @@ class ApiService {
         // Try to parse error message
         try {
           final errorData = json.decode(response.body);
-          final errorMessage = errorData['error'] ?? errorData['message'] ?? 'Failed to login';
+          final errorMessage =
+              errorData['error'] ?? errorData['message'] ?? 'Failed to login';
           throw Exception(errorMessage);
         } catch (e) {
           throw Exception('Failed to login (Status: ${response.statusCode})');
         }
       }
     } catch (e) {
-      if (e.toString().contains('502') || e.toString().contains('Bad Gateway')) {
-        throw Exception('Backend server is temporarily unavailable. Please try again.');
+      if (e.toString().contains('502') ||
+          e.toString().contains('Bad Gateway')) {
+        throw Exception(
+            'Backend server is temporarily unavailable. Please try again.');
       }
       rethrow;
     }
@@ -165,7 +274,8 @@ class ApiService {
       // Try to parse error message from response
       try {
         final errorData = json.decode(response.body);
-        final errorMessage = errorData['error'] ?? errorData['message'] ?? 'Failed to register';
+        final errorMessage =
+            errorData['error'] ?? errorData['message'] ?? 'Failed to register';
         throw Exception(errorMessage);
       } catch (e) {
         // If parsing fails, use status code
@@ -176,12 +286,42 @@ class ApiService {
     try {
       final responseData = json.decode(response.body);
       if (responseData['success'] == false) {
-        final errorMessage = responseData['error'] ?? responseData['message'] ?? 'Registration failed';
+        final errorMessage = responseData['error'] ??
+            responseData['message'] ??
+            'Registration failed';
         throw Exception(errorMessage);
       }
     } catch (e) {
       // Response is not JSON or doesn't have success field, assume success
     }
+  }
+
+  /// Permanently deletes the account after verifying email + password (App Store account deletion).
+  static Future<void> deleteAccount({
+    required String userId,
+    required String email,
+    required String password,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/user/delete');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'user_id': int.tryParse(userId) ?? 0,
+        'email': email,
+        'password': password,
+      }),
+    );
+    final contentType = response.headers['content-type'] ?? '';
+    if (!contentType.contains('application/json')) {
+      throw Exception('Could not delete account (invalid server response)');
+    }
+    final Map<String, dynamic> data =
+        json.decode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && data['success'] == true) {
+      return;
+    }
+    throw Exception(data['error']?.toString() ?? 'Could not delete account');
   }
 
   static Future<void> forgotPassword(String email) async {
@@ -232,7 +372,9 @@ class ApiService {
           final dynamic data = json.decode(response.body);
           if (data is List) {
             return data;
-          } else if (data is Map && data.containsKey('data') && data['data'] is List) {
+          } else if (data is Map &&
+              data.containsKey('data') &&
+              data['data'] is List) {
             return data['data'];
           }
           return [];
@@ -261,17 +403,11 @@ class ApiService {
         }
         try {
           final decoded = json.decode(response.body);
-          List<dynamic> rows;
-          if (decoded is List) {
-            rows = decoded;
-          } else if (decoded is Map<String, dynamic> &&
-              decoded['data'] is List) {
-            rows = decoded['data'] as List<dynamic>;
-          } else {
-            return [];
-          }
+          final rows = _categoryListRows(decoded);
           return rows
-              .map((e) => CategoryModel.fromMap(e as Map<String, dynamic>))
+              .map((e) => CategoryModel.fromMap(
+                    Map<String, dynamic>.from(e as Map),
+                  ))
               .toList();
         } catch (e) {
           return [];
@@ -286,23 +422,34 @@ class ApiService {
 
   static Future<List<ProductModel>> getProductsByCategory(
       int categoryId, int page) async {
-    // Backend V1 exposes filtered list on /v1/product/list (not /v1/category/products).
     final String getProductsByCategoryUrl =
         '$_baseUrl/v1/product/list?category_id=$categoryId&page=$page';
-    final response = await http.get(Uri.parse(getProductsByCategoryUrl));
-    if (response.statusCode == 200) {
-      final contentType = response.headers['content-type'] ?? '';
-      if (!contentType.contains('application/json')) {
-        throw Exception('Invalid response format from server');
-      }
-      final Map<String, dynamic> responseData =
-          json.decode(response.body) as Map<String, dynamic>;
-      final productList =
-          _productListPayload(responseData['data']).cast<Map<String, dynamic>>();
-      return productList.map(_productModelFromListItem).toList();
-    } else {
+    final response = await http
+        .get(Uri.parse(getProductsByCategoryUrl))
+        .timeout(_httpTimeout);
+    if (response.statusCode != 200) {
       throw Exception('Failed to load products for category');
     }
+    final dynamic decoded = json.decode(response.body);
+    if (decoded is Map && decoded['success'] == false) {
+      throw Exception(decoded['error']?.toString() ?? 'Request failed');
+    }
+    final Map<String, dynamic> responseData =
+        decoded is Map<String, dynamic>
+            ? decoded
+            : throw Exception('Invalid response format from server');
+    dynamic dataField = responseData['data'];
+    if (dataField == null && responseData.containsKey('products')) {
+      dataField = responseData['products'];
+    }
+    final rawList = _productListPayload(dataField ?? responseData);
+    final mapped = rawList.map((e) {
+      if (e is! Map) {
+        throw const FormatException('Invalid product row');
+      }
+      return _productModelFromListItem(Map<String, dynamic>.from(e));
+    }).toList();
+    return _appStoreCatalogOnly(mapped);
   }
 
   // Messages
@@ -406,21 +553,27 @@ class ApiService {
   }
 
   static Future<List<ProductModel>> getUserProducts(String slug) async {
-    final String getUserProductsUrl = '$_baseUrl/v1/profile/products?slug=$slug';
+    final String getUserProductsUrl =
+        '$_baseUrl/v1/profile/products?slug=$slug';
     final response = await http.get(Uri.parse(getUserProductsUrl));
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseData =
           json.decode(response.body) as Map<String, dynamic>;
-      final productList =
-          _productListPayload(responseData['data']).cast<Map<String, dynamic>>();
-      return productList.map(_productModelFromListItem).toList();
+      final rawList = _productListPayload(responseData['data']);
+      return rawList.map((e) {
+        if (e is! Map) {
+          throw const FormatException('Invalid product row');
+        }
+        return _productModelFromListItem(Map<String, dynamic>.from(e));
+      }).toList();
     } else {
       throw Exception('Failed to get user products');
     }
   }
 
   static Future<List<dynamic>> getFavorites(int userId) async {
-    final String favoritesUrl = '$_baseUrl/api/v1/profile/favorites?user_id=$userId';
+    final String favoritesUrl =
+        '$_baseUrl/api/v1/profile/favorites?user_id=$userId';
     final response = await http.get(Uri.parse(favoritesUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -431,7 +584,8 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getFollowers(int userId) async {
-    final String followersUrl = '$_baseUrl/api/v1/profile/followers?user_id=$userId';
+    final String followersUrl =
+        '$_baseUrl/api/v1/profile/followers?user_id=$userId';
     final response = await http.get(Uri.parse(followersUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -442,7 +596,8 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getFollowing(int userId) async {
-    final String followingUrl = '$_baseUrl/api/v1/profile/following?user_id=$userId';
+    final String followingUrl =
+        '$_baseUrl/api/v1/profile/following?user_id=$userId';
     final response = await http.get(Uri.parse(followingUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -453,7 +608,8 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getReviews(int userId) async {
-    final String reviewsUrl = '$_baseUrl/api/v1/profile/reviews?user_id=$userId';
+    final String reviewsUrl =
+        '$_baseUrl/api/v1/profile/reviews?user_id=$userId';
     final response = await http.get(Uri.parse(reviewsUrl));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -477,7 +633,8 @@ class ApiService {
   // Settings
   static Future<dynamic> getProfile(int userId) async {
     try {
-      final String getProfileUrl = '$_baseUrl/v1/setting/profile?user_id=$userId';
+      final String getProfileUrl =
+          '$_baseUrl/v1/setting/profile?user_id=$userId';
       final response = await http.get(Uri.parse(getProfileUrl));
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
@@ -491,11 +648,14 @@ class ApiService {
           throw Exception('Failed to parse profile response: ${e.toString()}');
         }
       } else {
-        throw Exception('Failed to get profile (Status: ${response.statusCode})');
+        throw Exception(
+            'Failed to get profile (Status: ${response.statusCode})');
       }
     } catch (e) {
-      if (e.toString().contains('502') || e.toString().contains('Bad Gateway')) {
-        throw Exception('Backend server is temporarily unavailable. Please try again.');
+      if (e.toString().contains('502') ||
+          e.toString().contains('Bad Gateway')) {
+        throw Exception(
+            'Backend server is temporarily unavailable. Please try again.');
       }
       rethrow;
     }
@@ -532,8 +692,8 @@ class ApiService {
     }
   }
 
-  static Future<void> updateContactInfo(int userId, String phone, String address,
-      int countryId, int stateId, int cityId) async {
+  static Future<void> updateContactInfo(int userId, String phone,
+      String address, int countryId, int stateId, int cityId) async {
     final String updateContactInfoUrl = '$_baseUrl/api/v1/setting/contact';
     final response = await http.post(
       Uri.parse(updateContactInfoUrl),
@@ -564,8 +724,8 @@ class ApiService {
     }
   }
 
-  static Future<void> updateShopSettings(int userId, String shopName, String about,
-      int showRssFeeds, int sendEmailWhenItemSold) async {
+  static Future<void> updateShopSettings(int userId, String shopName,
+      String about, int showRssFeeds, int sendEmailWhenItemSold) async {
     final String updateShopSettingsUrl = '$_baseUrl/api/v1/setting/shop';
     final response = await http.post(
       Uri.parse(updateShopSettingsUrl),
@@ -793,16 +953,32 @@ class ApiService {
   }
 
   // Product
-  static Future<ProductModel> getProductDetails(String slug, String userId) async {
+  static Future<ProductModel> getProductDetails(
+      String slug, String userId) async {
     final String getProductDetailsUrl =
-        '$_baseUrl/v1/product/detail_get?slug=$slug&user_id=$userId';
-    final response = await http.get(Uri.parse(getProductDetailsUrl));
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      return ProductModel.fromJson(data);
-    } else {
-      throw Exception('Failed to load product details');
+        '$_baseUrl/v1/product/detail_get?slug=${Uri.encodeComponent(slug)}&user_id=${Uri.encodeComponent(userId)}';
+    final response = await http
+        .get(Uri.parse(getProductDetailsUrl))
+        .timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          throw Exception(decoded['error'].toString());
+        }
+      } catch (e) {
+        if (e is Exception) rethrow;
+      }
+      throw Exception('Failed to load product details (${response.statusCode})');
     }
+    final dynamic decoded = json.decode(response.body);
+    if (decoded is Map && decoded['success'] == false) {
+      throw Exception(decoded['error']?.toString() ?? 'Product not found');
+    }
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Invalid product response');
+    }
+    return ProductModel.fromJson(decoded);
   }
 
   static Future<void> toggleFavorite(int userId, int productId) async {
@@ -847,16 +1023,14 @@ class ApiService {
     }
   }
 
-  static Future<void> deleteReview(int userId, int productId, int reviewId) async {
+  static Future<void> deleteReview(
+      int userId, int productId, int reviewId) async {
     final String deleteReviewUrl = '$_baseUrl/v1/product/review/delete';
     final response = await http.post(
       Uri.parse(deleteReviewUrl),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'user_id': userId,
-        'product_id': productId,
-        'review_id': reviewId
-      }),
+      body: json.encode(
+          {'user_id': userId, 'product_id': productId, 'review_id': reviewId}),
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to delete review');
@@ -869,8 +1043,8 @@ class ApiService {
     final response = await http.post(
       Uri.parse(addCommentUrl),
       headers: {'Content-Type': 'application/json'},
-      body: json
-          .encode({'user_id': userId, 'product_id': productId, 'comment': comment}),
+      body: json.encode(
+          {'user_id': userId, 'product_id': productId, 'comment': comment}),
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to add comment');
@@ -929,4 +1103,62 @@ class ApiService {
       throw Exception('Failed to start promotion payment');
     }
   }
+
+  /// Starts Selcom hosted checkout. POST /v1/checkout/selcom/init
+  static Future<SelcomCheckoutInitResult> initSelcomCheckout({
+    required List<Map<String, dynamic>> lines,
+    required String buyerName,
+    required String buyerEmail,
+    String? buyerPhone,
+    String? bearerToken,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/checkout/selcom/init');
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (bearerToken != null && bearerToken.isNotEmpty)
+        'Authorization': 'Bearer $bearerToken',
+    };
+    final body = json.encode({
+      'lines': lines,
+      'buyer_name': buyerName,
+      'buyer_email': buyerEmail,
+      if (buyerPhone != null && buyerPhone.isNotEmpty) 'buyer_phone': buyerPhone,
+    });
+    final response = await http.post(uri, headers: headers, body: body).timeout(_httpTimeout);
+    dynamic decoded;
+    try {
+      decoded = json.decode(response.body);
+    } catch (_) {
+      throw Exception('Invalid response from checkout server');
+    }
+    if (decoded is! Map) {
+      throw Exception('Invalid checkout response');
+    }
+    final root = Map<String, dynamic>.from(decoded);
+    if (root['success'] != true) {
+      final err = root['error']?.toString() ?? 'Checkout failed';
+      throw Exception(err);
+    }
+    final url = root['payment_gateway_url']?.toString() ?? '';
+    final token = root['order_token']?.toString() ?? '';
+    if (url.isEmpty) {
+      throw Exception('No payment URL returned');
+    }
+    return SelcomCheckoutInitResult(
+      paymentGatewayUrl: url,
+      orderToken: token,
+    );
+  }
+}
+
+/// Response from [ApiService.initSelcomCheckout].
+class SelcomCheckoutInitResult {
+  SelcomCheckoutInitResult({
+    required this.paymentGatewayUrl,
+    required this.orderToken,
+  });
+
+  final String paymentGatewayUrl;
+  final String orderToken;
 }

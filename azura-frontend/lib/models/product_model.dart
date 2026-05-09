@@ -53,6 +53,10 @@ class ProductModel {
   final String userSlug;
   final String productUrl;
 
+  /// Mobile app only offers physical goods for checkout (App Store paid digital policy).
+  bool get isPurchasableInApp =>
+      productType.toLowerCase().trim() != 'digital';
+
   ProductModel({
     required this.id,
     required this.title,
@@ -134,13 +138,13 @@ class ProductModel {
       title: json['title']?.toString() ?? 'No Title',
       slug: json['slug']?.toString() ?? '',
       image: _resolveProductImage(json['image']),
-      productType: '',
+      productType: json['product_type']?.toString() ?? 'physical',
       listingType: '',
       categoryId: json['category_id']?.toString() ?? '0',
       price: price,
       priceAfetDiscount: null,
       dicountpercent: discountPercent,
-      currency: json['currency']?.toString() ?? '',
+      currency: json['currency']?.toString() ?? 'TZS',
       userId: json['user_id']?.toString() ?? '0',
       status: '1',
       isPromoted: json['is_promoted']?.toString() ?? '0',
@@ -167,9 +171,14 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final List<String> files = [];
-    if (json['files'] != null) {
-      for (var file in json['files']) {
-        files.add(_resolveProductImage(file));
+    final rawFiles = json['files'];
+    if (rawFiles != null) {
+      if (rawFiles is List) {
+        for (final file in rawFiles) {
+          files.add(_resolveProductImage(file));
+        }
+      } else if (rawFiles is String) {
+        files.add(_resolveProductImage(rawFiles));
       }
     }
     final priceVal = json['price'];
@@ -198,7 +207,7 @@ class ProductModel {
           ? (json['price_afet_discount'] as num).toDouble()
           : double.tryParse(json['price_afet_discount']?.toString() ?? ''),
       dicountpercent: json['dicountpercent'],
-      currency: json['currency']?.toString() ?? '',
+      currency: json['currency']?.toString() ?? 'TZS',
       description: json['description']?.toString(),
       productCondition: json['product_condition']?.toString(),
       countryId: json['country_id']?.toString(),

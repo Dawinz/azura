@@ -469,12 +469,13 @@ class V1 extends CI_Controller {
             $this->db->where('p.visibility', 1);
             $this->db->where('p.is_deleted', 0);
             $this->db->where('p.is_draft', 0);
+            $this->db->where('p.product_type', 'physical');
             if ($category_id > 0) {
                 $this->db->where('p.category_id', $category_id);
             }
             $total = $this->db->count_all_results();
 
-            $this->db->select('p.id, p.category_id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at');
+            $this->db->select('p.id, p.category_id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at, p.product_type');
             $this->db->select('(SELECT title FROM product_details WHERE product_id = p.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS title');
             $this->db->select('(SELECT image_small FROM images WHERE product_id = p.id AND is_main = 1 LIMIT 1) AS image');
             $this->db->from('products p');
@@ -482,6 +483,7 @@ class V1 extends CI_Controller {
             $this->db->where('p.visibility', 1);
             $this->db->where('p.is_deleted', 0);
             $this->db->where('p.is_draft', 0);
+            $this->db->where('p.product_type', 'physical');
             if ($category_id > 0) {
                 $this->db->where('p.category_id', $category_id);
             }
@@ -505,6 +507,7 @@ class V1 extends CI_Controller {
                     'rating' => $row->rating ?: '0',
                     'is_promoted' => (int) $row->is_promoted,
                     'is_sold' => (int) $row->is_sold,
+                    'product_type' => isset($row->product_type) ? (string) $row->product_type : 'physical',
                     'image' => $img ? $base_url . $img : null,
                     'created_at' => $row->created_at,
                 );
@@ -612,6 +615,76 @@ class V1 extends CI_Controller {
         } catch (Throwable $e) {
             $this->output->set_status_header(500);
             $this->output->set_output(json_encode(array('success' => false, 'error' => $e->getMessage())));
+        }
+    }
+
+    /**
+     * POST /v1/user/delete
+     * JSON body: user_id, email, password — verifies credentials then permanently deletes the account.
+     */
+    public function user_delete_account() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        if (strtoupper((string) $this->input->server('REQUEST_METHOD')) !== 'POST') {
+            $this->output->set_status_header(405);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Method not allowed')));
+            return;
+        }
+        try {
+            $raw = $this->input->raw_input_stream;
+            if ($raw === '' || $raw === null) {
+                $raw = file_get_contents('php://input');
+            }
+            $body = json_decode((string) $raw, true);
+            if (!is_array($body)) {
+                $body = array();
+            }
+            $user_id = isset($body['user_id']) ? (int) $body['user_id'] : 0;
+            $email = isset($body['email']) ? trim((string) $body['email']) : '';
+            $password = isset($body['password']) ? (string) $body['password'] : '';
+
+            if ($user_id < 1 || $email === '' || $password === '') {
+                $this->output->set_status_header(400);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'user_id, email, and password are required')));
+                return;
+            }
+
+            $this->db->where('id', $user_id);
+            $this->db->where('email', $email);
+            $user = $this->db->get('users')->row();
+            if (empty($user)) {
+                $this->output->set_status_header(401);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid credentials')));
+                return;
+            }
+
+            $valid_password = false;
+            if (!empty($user->password)) {
+                $valid_password = password_verify($password, (string) $user->password);
+                if (!$valid_password) {
+                    $this->load->library('bcrypt');
+                    $valid_password = (bool) $this->bcrypt->check_password($password, $user->password);
+                }
+            }
+            if (!$valid_password) {
+                $this->output->set_status_header(401);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid credentials')));
+                return;
+            }
+
+            $this->load->model('product_admin_model');
+            $this->load->model('auth_model');
+            $ok = $this->auth_model->delete_user($user_id);
+            if ($ok) {
+                $this->output->set_output(json_encode(array('success' => true, 'message' => 'Account deleted')));
+            } else {
+                $this->output->set_status_header(500);
+                $this->output->set_output(json_encode(array('success' => false, 'error' => 'Could not delete account')));
+            }
+        } catch (Throwable $e) {
+            log_message('error', 'V1 user_delete_account: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Server error')));
         }
     }
 
