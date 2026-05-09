@@ -21,6 +21,9 @@ endif; ?>
 </div>
 <div class="col-6 col-right">
 <ul class="navbar-nav">
+<li class="nav-item">
+<a href="javascript:void(0)" class="nav-link azura-topbar-app-link azura-app-download-pill" data-toggle="modal" data-target="#androidAppModal" title="Get the Android app"><span class="azura-app-pill-inner"><i class="icon-download-solid"></i><span class="azura-topbar-app-text">Android app</span></span></a>
+</li>
 <?php if ($this->general_settings->location_search_header == 1 && item_count($this->countries) > 0): ?>
 <li class="nav-item">
 <a href="javascript:void(0)" data-toggle="modal" data-target="#locationModal" class="nav-link btn-modal-location">

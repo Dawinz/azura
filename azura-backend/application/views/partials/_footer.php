@@ -150,6 +150,18 @@
 <a href="javascript:void(0)" class="scrollup"><i class="icon-arrow-up"></i></a>
 <script src="<?= base_url(); ?>assets/js/jquery-3.5.1.min.js"></script>
 <script src="<?= base_url(); ?>assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script>
+$(document).ready(function () {
+    try {
+        var key = 'azura_android_app_tip_seen';
+        if (sessionStorage.getItem(key) || !$('#androidAppModal').length) return;
+        sessionStorage.setItem(key, '1');
+        setTimeout(function () {
+            $('#androidAppModal').modal({backdrop: true, keyboard: true});
+        }, 900);
+    } catch (e) {}
+});
+</script>
 <script src="<?= base_url(); ?>assets/js/plugins-1.8.js"></script>
 <script src="<?= base_url(); ?>assets/js/script-1.8.min.js"></script>
 <?php if (!empty($this->session->userdata('mds_send_email_data'))): ?>

@@ -189,6 +189,9 @@ foreach ($this->languages as $language): ?>
                         <div class="mobile-search">
                             <a class="search-icon"><i class="icon-search"></i></a>
                         </div>
+                        <div class="mobile-app-banner">
+                            <a href="javascript:void(0)" class="mobile-app-banner-link" data-toggle="modal" data-target="#androidAppModal" title="Get the Android app"><i class="icon-download-solid"></i></a>
+                        </div>
                         <div class="mobile-cart<?= !$this->is_sale_active ? ' visibility-hidden' : ''; ?>">
                             <a href="<?php echo generate_url("cart"); ?>"><i class="icon-cart"></i>
                                 <?php $cart_product_count = get_cart_product_count(); ?>
@@ -313,5 +316,7 @@ foreach ($this->languages as $language): ?>
         </div>
     </div>
 <?php endif; ?>
+
+<?php $this->load->view('partials/_android_app_modal'); ?>
 
 <div id="menu-overlay"></div>

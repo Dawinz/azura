@@ -29,5 +29,24 @@
     #footer .copyright{color:#6b7280}
     @media (max-width:991px){.featured-categories .card{min-height:190px}.img-product-container .img-product{height:170px}.section{margin-bottom:22px}.product-item{padding:8px}}
     @media (max-width:575px){.featured-categories .card{min-height:150px}.img-product-container .img-product{height:150px}.row.row-product .col-product{margin-bottom:12px}.section .title{font-size:1.15rem}}
+    .azura-app-download-pill{display:inline-flex;align-items:center;padding:.42rem .85rem;border-radius:999px;font-size:.88rem;font-weight:600;color:#fff!important;background:linear-gradient(135deg,<?= $clr; ?> 0%,#1e3a5f 100%);box-shadow:0 4px 14px rgba(17,24,39,.18);text-decoration:none!important;margin-right:.35rem;transition:transform .15s ease,box-shadow .15s ease}
+    .azura-app-download-pill:hover,.azura-app-download-pill:focus{color:#fff!important;transform:translateY(-1px);box-shadow:0 6px 18px rgba(17,24,39,.22)}
+    .azura-app-pill-inner{display:inline-flex;align-items:center;gap:6px}
+    .top-bar .navbar-nav .azura-app-download-pill.nav-link{padding:.34rem .8rem!important;margin-top:2px;color:#fff!important;border:none}
+    .top-bar .azura-topbar-app-text{white-space:nowrap}
+    @media (max-width:575px){.top-bar .azura-topbar-app-text{display:none}.top-bar .navbar-nav .azura-app-download-pill.nav-link{padding:.34rem .55rem!important}}
+    .nav-mobile-header .mobile-app-banner{display:flex;align-items:center;justify-content:center;margin-right:8px}
+    .nav-mobile-header .mobile-app-banner-link{color:#111827;font-size:1.15rem;padding:6px;border-radius:10px;background:#f3f4f6;line-height:1}
+    .nav-mobile-header .mobile-app-banner-link:hover{color:<?= $clr; ?>}
+    .azura-app-modal-dialog{max-width:400px}
+    .azura-app-modal-content{border:none;border-radius:18px;box-shadow:0 24px 48px rgba(15,23,42,.2)}
+    .azura-app-modal-body{padding:2rem 1.75rem 1.75rem;position:relative;text-align:center}
+    .azura-app-modal-close{position:absolute;top:12px;right:14px;opacity:.55}
+    .azura-app-modal-icon-wrap{margin-bottom:1rem}
+    .azura-app-modal-icon{display:inline-flex;width:56px;height:56px;border-radius:16px;align-items:center;justify-content:center;background:linear-gradient(135deg,<?= $clr; ?> 0%,#1e3a5f 100%);color:#fff;font-size:1.35rem}
+    .azura-app-modal-title{font-size:1.25rem;font-weight:700;margin-bottom:.65rem}
+    .azura-app-modal-text{color:#4b5563;font-size:.95rem;line-height:1.5;margin-bottom:1.25rem}
+    .azura-app-download-btn{border-radius:12px!important;font-weight:600;padding:.65rem 1rem!important;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .azura-app-modal-hint{font-size:.8rem;margin-top:.75rem;margin-bottom:0;line-height:1.4}
 </style>
 <script>var mds_config = {base_url: "<?= base_url(); ?>", lang_base_url: "<?= lang_base_url(); ?>", sys_lang_id: "<?= $this->selected_lang->id; ?>", thousands_separator: "<?= $this->thousands_separator; ?>", csfr_token_name: "<?= $this->security->get_csrf_token_name(); ?>", csfr_cookie_name: "<?= $this->config->item('csrf_cookie_name'); ?>", txt_all: "<?= trans("all"); ?>", txt_no_results_found: "<?= trans("no_results_found"); ?>", sweetalert_ok: "<?= trans("ok"); ?>", sweetalert_cancel: "<?= trans("cancel"); ?>", msg_accept_terms: "<?= trans("msg_accept_terms"); ?>", cart_route: "<?= !empty($this->routes) && !empty($this->routes->cart) ? $this->routes->cart : ''; ?>", slider_fade_effect: "<?= ($this->general_settings->slider_effect == "fade") ? 1 : 0; ?>", is_recaptcha_enabled: "<?= !empty($recaptcha_status) && $recaptcha_status == true ? "true" : "false" ?>", rtl: <?= $this->rtl == "true" ? true : "false" ?>};if(mds_config.rtl==1){mds_config.rtl=true;}</script>
