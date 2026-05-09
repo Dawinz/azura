@@ -11,6 +11,10 @@
                                 <h1 class="cart-section-title"><?php echo trans("checkout"); ?></h1>
                                 <div class="tab-checkout tab-checkout-open m-t-0">
                                     <h2 class="title">1.&nbsp;&nbsp;<?php echo trans("shipping_information"); ?></h2>
+                                    <div class="alert alert-info m-b-15" role="alert">
+                                        <strong>Next step:</strong> choose <strong>Country</strong> and <strong>State</strong>, fill <strong>City</strong>, then select a shipping method and click
+                                        <strong><?= trans("continue_to_payment_method"); ?></strong>.
+                                    </div>
                                     <?php echo form_open("shipping-post", ['id' => 'form-guest-shipping', 'class' => 'validate-form']);
                                     $mds_cart_shipping = get_sess_data('mds_cart_shipping');
                                     $show_billing_form = 0;
@@ -67,8 +71,8 @@
                                                 <div class="row">
                                                     <div class="col-12 col-md-6 m-b-sm-15">
                                                         <label class="control-label"><?php echo trans("country"); ?></label>
-                                                        <select id="select_countries_guest_address" name="shipping_country_id" class="select2 select2-req form-control" data-placeholder="<?= trans("country"); ?>" onchange="get_states(this.value,false,'guest_address'); $('#cart_shipping_methods_container').empty();" required>
-                                                            <option></option>
+                                                        <select id="select_countries_guest_address" name="shipping_country_id" class="form-control" data-placeholder="<?= trans("country"); ?>" onchange="get_states(this.value,false,'guest_address'); $('#cart_shipping_methods_container').empty();" required>
+                                                            <option value=""><?= trans("country"); ?></option>
                                                             <?php foreach ($this->countries as $item): ?>
                                                                 <option value="<?= $item->id; ?>" <?= !empty($shipping_address['country_id']) && $shipping_address['country_id'] == $item->id ? 'selected' : ''; ?>><?= html_escape($item->name); ?></option>
                                                             <?php endforeach; ?>
@@ -76,7 +80,8 @@
                                                     </div>
                                                     <div id="get_states_container_guest_address" class="col-12 col-md-6">
                                                         <label class="control-label"><?php echo trans("state"); ?></label>
-                                                        <select id="select_states_guest_address" name="shipping_state_id" class="select2 select2-req form-control" data-placeholder="<?= trans("state"); ?>" onchange="get_shipping_methods_by_location(this.value);" required>
+                                                        <select id="select_states_guest_address" name="shipping_state_id" class="form-control" data-placeholder="<?= trans("state"); ?>" onchange="get_shipping_methods_by_location(this.value);" required>
+                                                            <option value=""><?= trans("state"); ?></option>
                                                             <?php if (!empty($shipping_address['country_id'])):
                                                                 $states = get_states_by_country($shipping_address['country_id']);
                                                             endif;
@@ -139,8 +144,8 @@
                                                 <div class="row">
                                                     <div class="col-12 col-md-6 m-b-sm-15">
                                                         <label class="control-label"><?php echo trans("country"); ?></label>
-                                                        <select id="select_countries_guest_billing" name="billing_country_id" class="select2 form-control <?= $show_billing_form == 1 ? 'select2-req' : ''; ?>" data-placeholder="<?= trans("country"); ?>" onchange="get_states(this.value,false,'guest_billing');" required>
-                                                            <option></option>
+                                                        <select id="select_countries_guest_billing" name="billing_country_id" class="form-control" data-placeholder="<?= trans("country"); ?>" onchange="get_states(this.value,false,'guest_billing');" required>
+                                                            <option value=""><?= trans("country"); ?></option>
                                                             <?php foreach ($this->countries as $item): ?>
                                                                 <option value="<?= $item->id; ?>" <?= !empty($billing_address['country_id']) && $billing_address['country_id'] == $item->id ? 'selected' : ''; ?>><?= html_escape($item->name); ?></option>
                                                             <?php endforeach; ?>
@@ -148,7 +153,8 @@
                                                     </div>
                                                     <div id="get_states_container_guest_billing" class="col-12 col-md-6">
                                                         <label class="control-label"><?php echo trans("state"); ?></label>
-                                                        <select id="select_states_guest_billing" name="billing_state_id" class="select2 form-control <?= $show_billing_form == 1 ? 'select2-req' : ''; ?>" data-placeholder="<?= trans("state"); ?>" required>
+                                                        <select id="select_states_guest_billing" name="billing_state_id" class="form-control" data-placeholder="<?= trans("state"); ?>" required>
+                                                            <option value=""><?= trans("state"); ?></option>
                                                             <?php if (!empty($billing_address['country_id'])):
                                                                 $states = get_states_by_country($billing_address['country_id']);
                                                             endif;
