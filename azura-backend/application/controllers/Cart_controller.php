@@ -860,7 +860,8 @@ class Cart_controller extends Home_Core_Controller
             'no_of_items' => 1
         );
 
-        $response = $this->selcom_api_request($selcom, '/v1/checkout/create-order-minimal', 'POST', $payload, array(
+        $this->load->helper('selcom');
+        $response = selcom_api_request($selcom, '/v1/checkout/create-order-minimal', 'POST', $payload, array(
             'vendor', 'order_id', 'buyer_email', 'buyer_name', 'buyer_phone', 'amount', 'currency', 'payment_methods',
             'redirect_url', 'cancel_url', 'webhook', 'buyer_remarks', 'merchant_remarks', 'no_of_items'
         ));
@@ -918,7 +919,8 @@ class Cart_controller extends Home_Core_Controller
             exit();
         }
 
-        $statusResponse = $this->selcom_api_request($selcom, '/v1/checkout/order-status', 'GET', array('order_id' => $orderId), array('order_id'));
+        $this->load->helper('selcom');
+        $statusResponse = selcom_api_request($selcom, '/v1/checkout/order-status', 'GET', array('order_id' => $orderId), array('order_id'));
         if (empty($statusResponse) || strtoupper((string)($statusResponse['result'] ?? '')) != 'SUCCESS') {
             $this->session->set_flashdata('error', !empty($statusResponse['message']) ? $statusResponse['message'] : trans("msg_error"));
             redirect(generate_url("cart", "payment"));
@@ -953,7 +955,8 @@ class Cart_controller extends Home_Core_Controller
     }
 
     /**
-     * Selcom server-to-server callback (ack only)
+     * Selcom server-to-server callback.
+     * Keeps ACK contract and finalizes app checkout orders when possible.
      */
     public function selcom_payment_webhook()
     {
@@ -962,6 +965,69 @@ class Cart_controller extends Home_Core_Controller
             $payload = array();
         }
         log_message('info', 'Selcom webhook: ' . json_encode($payload));
+
+        $orderId = '';
+        if (!empty($payload['order_id'])) {
+            $orderId = (string) $payload['order_id'];
+        } elseif (!empty($payload['data'][0]['order_id'])) {
+            $orderId = (string) $payload['data'][0]['order_id'];
+        } else {
+            $orderId = input_get('order_id');
+        }
+
+        if ($orderId !== '') {
+            $this->load->model('app_selcom_checkout_model');
+            $row = $this->app_selcom_checkout_model->get_by_token($orderId);
+            if (!empty($row) && $row->status !== 'completed') {
+                $selcom = get_payment_gateway('selcom');
+                if (!empty($selcom)) {
+                    $this->load->helper('selcom');
+                    $statusResponse = selcom_api_request($selcom, '/v1/checkout/order-status', 'GET', array('order_id' => $orderId), array('order_id'));
+                    $statusData = !empty($statusResponse['data'][0]) ? $statusResponse['data'][0] : array();
+                    $paymentStatus = strtoupper((string) ($statusData['payment_status'] ?? ''));
+
+                    if (strtoupper((string) ($statusResponse['result'] ?? '')) === 'SUCCESS' && $paymentStatus === 'COMPLETED') {
+                        $cartFinal = json_decode($row->cart_final_json, false);
+                        $cartTotal = json_decode($row->cart_total_json, false);
+                        if (!empty($cartFinal) && !empty($cartTotal)) {
+                            $savedAuth = $this->auth_check;
+                            $savedUser = isset($this->auth_user) ? $this->auth_user : null;
+                            if (!empty($row->user_id)) {
+                                $u = $this->auth_model->get_user((int) $row->user_id);
+                                if (!empty($u)) {
+                                    $this->auth_check = true;
+                                    $this->auth_user = $u;
+                                }
+                            }
+
+                            $this->session->set_userdata('mds_shopping_cart_final', $cartFinal);
+                            $this->session->set_userdata('mds_shopping_cart_total_final', $cartTotal);
+                            $txRef = !empty($statusData['reference']) ? $statusData['reference'] : (!empty($statusData['transid']) ? $statusData['transid'] : $orderId);
+                            $data_transaction = array(
+                                'payment_method' => $selcom->name,
+                                'payment_id' => $txRef,
+                                'currency' => !empty($statusData['currency']) ? strtoupper((string) $statusData['currency']) : strtoupper((string) $row->currency),
+                                'payment_amount' => !empty($statusData['amount']) ? (float) $statusData['amount'] : (float) $row->total_amount,
+                                'payment_status' => 'Succeeded',
+                            );
+                            $response = $this->execute_payment($data_transaction, 'sale', lang_base_url());
+                            $this->auth_check = $savedAuth;
+                            $this->auth_user = $savedUser;
+                            if ($response->result == 1 && !empty($response->order_primary_id)) {
+                                $this->app_selcom_checkout_model->mark_completed($orderId, (int) $response->order_primary_id);
+                            } else {
+                                $this->app_selcom_checkout_model->mark_failed($orderId);
+                            }
+                        } else {
+                            $this->app_selcom_checkout_model->mark_failed($orderId);
+                        }
+                    } elseif (in_array($paymentStatus, array('CANCELLED', 'FAILED', 'DECLINED', 'EXPIRED'), true)) {
+                        $this->app_selcom_checkout_model->mark_failed($orderId);
+                    }
+                }
+            }
+        }
+
         $this->output
             ->set_content_type('application/json')
             ->set_output(json_encode(array(
@@ -969,79 +1035,6 @@ class Cart_controller extends Home_Core_Controller
                 'resultcode' => '000',
                 'message' => 'ACK'
             )));
-    }
-
-    private function selcom_api_request($selcom, $path, $method, $payload, $signedFields)
-    {
-        $baseUrl = $this->selcom_base_url($selcom);
-        $timestamp = date('Y-m-d H:i:s');
-        $query = '';
-        $body = '';
-        $url = rtrim($baseUrl, '/') . $path;
-        if (strtoupper($method) === 'GET') {
-            $query = http_build_query($payload);
-            if (!empty($query)) {
-                $url .= '?' . $query;
-            }
-        } else {
-            $body = json_encode($payload);
-        }
-
-        $digest = $this->selcom_digest($timestamp, $payload, $signedFields, trim($selcom->secret_key));
-        $headers = array(
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Authorization: SELCOM ' . base64_encode(trim($selcom->public_key)),
-            'Digest-Method: HS256',
-            'Digest: ' . $digest,
-            'Timestamp: ' . $timestamp,
-            'Signed-Fields: ' . implode(',', $signedFields)
-        );
-
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 60,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER => $headers,
-        ));
-        if (strtoupper($method) !== 'GET') {
-            curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
-        }
-        $response = curl_exec($curl);
-        curl_close($curl);
-        $decoded = json_decode($response, true);
-        return is_array($decoded) ? $decoded : array();
-    }
-
-    private function selcom_digest($timestamp, $payload, $signedFields, $apiSecret)
-    {
-        $parts = array('timestamp=' . $timestamp);
-        foreach ($signedFields as $field) {
-            $value = isset($payload[$field]) ? $payload[$field] : '';
-            if (is_array($value) || is_object($value)) {
-                $value = json_encode($value);
-            }
-            $parts[] = $field . '=' . (string)$value;
-        }
-        $signingString = implode('&', $parts);
-        return base64_encode(hash_hmac('sha256', $signingString, $apiSecret, true));
-    }
-
-    private function selcom_base_url($selcom)
-    {
-        if (!empty($_ENV['SELCOM_BASE_URL'])) {
-            return trim($_ENV['SELCOM_BASE_URL']);
-        }
-        if (!empty($selcom->environment) && $selcom->environment == 'sandbox') {
-            return 'https://apigwtest.selcommobile.com';
-        }
-        return 'https://apigw.selcommobile.com';
     }
 
     /**
@@ -1060,6 +1053,7 @@ class Cart_controller extends Home_Core_Controller
             $order_id = $this->order_model->add_order($data_transaction);
             $order = $this->order_model->get_order($order_id);
             if (!empty($order)) {
+                $response->order_primary_id = (int) $order->id;
                 //decrease product quantity after sale
                 $this->order_model->decrease_product_stock_after_sale($order->id);
                 //send email
@@ -1311,6 +1305,290 @@ class Cart_controller extends Home_Core_Controller
         $this->load->view('partials/_header', $data);
         $this->load->view('cart/promote_payment_completed', $data);
         $this->load->view('partials/_footer');
+    }
+
+    /**
+     * POST /v1/checkout/selcom/init (JSON) — Flutter / API clients.
+     * Body: { "lines": [{"product_id":1,"quantity":1}], "buyer_name", "buyer_email", "buyer_phone" }
+     * Header (optional): Authorization: Bearer <users.token from /v1/auth/login>
+     */
+    public function api_selcom_checkout_init()
+    {
+        $this->api_flutter_set_cors();
+        $this->output->set_content_type('application/json');
+        if ($this->input->server('REQUEST_METHOD') === 'OPTIONS') {
+            $this->output->set_status_header(200);
+            return;
+        }
+        if ($this->input->method() !== 'post') {
+            $this->output->set_status_header(405);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Method not allowed')));
+            return;
+        }
+
+        $raw = $this->input->raw_input_stream;
+        if ($raw === '' || $raw === null) {
+            $raw = file_get_contents('php://input');
+        }
+        $input = json_decode((string) $raw, true);
+        if (!is_array($input)) {
+            $input = array();
+        }
+
+        $lines = isset($input['lines']) ? $input['lines'] : array();
+        $auth_header = $this->input->get_request_header('Authorization', true);
+        $user = null;
+        if (!empty($auth_header) && preg_match('/Bearer\s+(\S+)/i', $auth_header, $m)) {
+            $this->load->model('auth_model');
+            $user = $this->auth_model->get_user_by_token(trim($m[1]));
+        }
+
+        $buyer_name = isset($input['buyer_name']) ? trim((string) $input['buyer_name']) : '';
+        $buyer_email = isset($input['buyer_email']) ? trim((string) $input['buyer_email']) : '';
+        $buyer_phone = isset($input['buyer_phone']) ? preg_replace('/\s+/', '', (string) $input['buyer_phone']) : '';
+
+        if (!empty($user)) {
+            if ($buyer_name === '') {
+                $buyer_name = trim(((string) ($user->first_name ?? '')) . ' ' . ((string) ($user->last_name ?? '')));
+            }
+            if ($buyer_name === '') {
+                $buyer_name = (string) ($user->username ?? 'Customer');
+            }
+            if ($buyer_email === '' && !empty($user->email)) {
+                $buyer_email = (string) $user->email;
+            }
+            if ($buyer_phone === '' && !empty($user->phone_number)) {
+                $buyer_phone = preg_replace('/\s+/', '', (string) $user->phone_number);
+            }
+        }
+
+        if ($buyer_email === '' || !filter_var($buyer_email, FILTER_VALIDATE_EMAIL)) {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Valid buyer_email is required')));
+            return;
+        }
+        if ($buyer_name === '') {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'buyer_name is required')));
+            return;
+        }
+        if ($buyer_phone === '') {
+            $buyer_phone = '255700000000';
+        }
+
+        $selcom = get_payment_gateway('selcom');
+        if (empty($selcom)) {
+            $this->output->set_status_header(503);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Selcom is not configured. Add it in Admin → Payment Settings.')));
+            return;
+        }
+        if (isset($selcom->status) && (int) $selcom->status !== 1) {
+            $this->output->set_status_header(503);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Selcom is disabled. Enable it in Admin → Payment Settings.')));
+            return;
+        }
+        if (empty($selcom->public_key) || empty($selcom->secret_key) || empty($selcom->locale)) {
+            $this->output->set_status_header(503);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Selcom credentials incomplete (Vendor ID, API Key, Secret).')));
+            return;
+        }
+
+        $prepared = $this->cart_model->prepare_checkout_from_api_lines($lines);
+        if (!empty($prepared['error'])) {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => $prepared['error'])));
+            return;
+        }
+
+        /** @var array $cartFinal */
+        $cartFinal = $prepared['cart_final'];
+        $cartTotal = $prepared['cart_total'];
+        $payAmt = $prepared['payment_amount'];
+        $orderToken = generate_token();
+
+        $this->load->model('app_selcom_checkout_model');
+        $this->app_selcom_checkout_model->insert_pending(array(
+            'order_token' => $orderToken,
+            'user_id' => !empty($user) ? (int) $user->id : null,
+            'buyer_email' => $buyer_email,
+            'buyer_name' => $buyer_name,
+            'buyer_phone' => $buyer_phone,
+            'cart_final_json' => json_encode($cartFinal),
+            'cart_total_json' => json_encode($cartTotal),
+            'currency' => (string) $payAmt->currency,
+            'total_amount' => (float) $payAmt->total,
+            'status' => 'pending',
+        ));
+
+        $returnUrl = base_url() . 'selcom-app-payment-return?payment_type=sale&order_id=' . rawurlencode($orderToken);
+        $webhookUrl = base_url() . 'selcom-payment-webhook?order_id=' . rawurlencode($orderToken);
+
+        $amount = (float) $payAmt->total;
+        if (filter_var($amount, FILTER_VALIDATE_INT) === false) {
+            $amount = (float) number_format($amount, 2, '.', '');
+        }
+
+        $payload = array(
+            'vendor' => trim($selcom->locale),
+            'order_id' => $orderToken,
+            'buyer_email' => $buyer_email,
+            'buyer_name' => $buyer_name,
+            'buyer_phone' => $buyer_phone,
+            'amount' => $amount,
+            'currency' => strtoupper((string) $payAmt->currency),
+            'payment_methods' => 'ALL',
+            'redirect_url' => base64_encode($returnUrl),
+            'cancel_url' => base64_encode($returnUrl . '&cancelled=1'),
+            'webhook' => base64_encode($webhookUrl),
+            'buyer_remarks' => 'App order ' . $orderToken,
+            'merchant_remarks' => 'Azura Mall app checkout',
+            'no_of_items' => count($cartFinal),
+        );
+
+        $this->load->helper('selcom');
+        $response = selcom_api_request($selcom, '/v1/checkout/create-order-minimal', 'POST', $payload, array(
+            'vendor', 'order_id', 'buyer_email', 'buyer_name', 'buyer_phone', 'amount', 'currency', 'payment_methods',
+            'redirect_url', 'cancel_url', 'webhook', 'buyer_remarks', 'merchant_remarks', 'no_of_items',
+        ));
+
+        if (empty($response) || !isset($response['result']) || strtoupper((string) $response['result']) !== 'SUCCESS') {
+            $this->app_selcom_checkout_model->mark_failed($orderToken);
+            $this->output->set_status_header(502);
+            $this->output->set_output(json_encode(array(
+                'success' => false,
+                'error' => !empty($response['message']) ? (string) $response['message'] : 'Selcom create-order failed',
+            )));
+            return;
+        }
+
+        $gatewayUrl = '';
+        if (!empty($response['data'][0]['payment_gateway_url'])) {
+            $rawUrl = $response['data'][0]['payment_gateway_url'];
+            $decoded = base64_decode($rawUrl, true);
+            $gatewayUrl = !empty($decoded) ? $decoded : $rawUrl;
+        }
+        if ($gatewayUrl === '') {
+            $this->app_selcom_checkout_model->mark_failed($orderToken);
+            $this->output->set_status_header(502);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Selcom did not return a checkout URL')));
+            return;
+        }
+
+        $this->output->set_output(json_encode(array(
+            'success' => true,
+            'order_token' => $orderToken,
+            'payment_gateway_url' => $gatewayUrl,
+            'amount' => $amount,
+            'currency' => strtoupper((string) $payAmt->currency),
+        )));
+    }
+
+    /**
+     * Browser return after Selcom hosted checkout (mobile app WebView / external browser).
+     */
+    public function selcom_app_payment_return()
+    {
+        $this->load->helper('selcom');
+        $this->load->model('app_selcom_checkout_model');
+        $orderId = input_get('order_id');
+        $cancelled = input_get('cancelled');
+        if (!empty($cancelled)) {
+            $this->session->set_flashdata('error', 'Payment cancelled.');
+            redirect(generate_url('cart', 'cart'));
+            return;
+        }
+        if ($orderId === '') {
+            $this->session->set_flashdata('error', trans('invalid_attempt'));
+            redirect(lang_base_url());
+            return;
+        }
+
+        $row = $this->app_selcom_checkout_model->get_by_token($orderId);
+        if (empty($row)) {
+            $this->session->set_flashdata('error', trans('msg_error'));
+            redirect(lang_base_url());
+            return;
+        }
+
+        if ($row->status === 'completed' && !empty($row->internal_order_id)) {
+            $existing = $this->order_model->get_order((int) $row->internal_order_id);
+            if (!empty($existing)) {
+                if ((int) $existing->buyer_id === 0) {
+                    $this->session->set_userdata('mds_show_order_completed_page', 1);
+                    redirect(lang_base_url() . get_route('order_completed', true) . $existing->order_number);
+                } else {
+                    redirect(lang_base_url() . get_route('order_details', true) . $existing->order_number);
+                }
+                return;
+            }
+        }
+
+        $selcom = get_payment_gateway('selcom');
+        if (empty($selcom)) {
+            $this->session->set_flashdata('error', 'Selcom not configured');
+            redirect(lang_base_url());
+            return;
+        }
+
+        $statusResponse = selcom_api_request($selcom, '/v1/checkout/order-status', 'GET', array('order_id' => $orderId), array('order_id'));
+        if (empty($statusResponse) || strtoupper((string) ($statusResponse['result'] ?? '')) !== 'SUCCESS') {
+            $this->session->set_flashdata('error', !empty($statusResponse['message']) ? (string) $statusResponse['message'] : trans('msg_error'));
+            redirect(generate_url('cart', 'cart'));
+            return;
+        }
+
+        $statusData = !empty($statusResponse['data'][0]) ? $statusResponse['data'][0] : array();
+        $paymentStatus = strtoupper((string) ($statusData['payment_status'] ?? ''));
+        if ($paymentStatus !== 'COMPLETED') {
+            $this->session->set_flashdata('error', 'Payment not completed. Status: ' . ($paymentStatus !== '' ? $paymentStatus : 'UNKNOWN'));
+            redirect(generate_url('cart', 'cart'));
+            return;
+        }
+
+        $cartFinal = json_decode($row->cart_final_json, false);
+        $cartTotal = json_decode($row->cart_total_json, false);
+        if (empty($cartFinal) || empty($cartTotal)) {
+            $this->session->set_flashdata('error', trans('msg_error'));
+            redirect(lang_base_url());
+            return;
+        }
+
+        $savedAuth = $this->auth_check;
+        $savedUser = isset($this->auth_user) ? $this->auth_user : null;
+        if (!empty($row->user_id)) {
+            $u = $this->auth_model->get_user((int) $row->user_id);
+            if (!empty($u)) {
+                $this->auth_check = true;
+                $this->auth_user = $u;
+            }
+        }
+
+        $this->session->set_userdata('mds_shopping_cart_final', $cartFinal);
+        $this->session->set_userdata('mds_shopping_cart_total_final', $cartTotal);
+
+        $txRef = !empty($statusData['reference']) ? $statusData['reference'] : (!empty($statusData['transid']) ? $statusData['transid'] : $orderId);
+        $data_transaction = array(
+            'payment_method' => $selcom->name,
+            'payment_id' => $txRef,
+            'currency' => !empty($statusData['currency']) ? strtoupper((string) $statusData['currency']) : strtoupper((string) $row->currency),
+            'payment_amount' => !empty($statusData['amount']) ? (float) $statusData['amount'] : (float) $row->total_amount,
+            'payment_status' => 'Succeeded',
+        );
+
+        $response = $this->execute_payment($data_transaction, 'sale', lang_base_url());
+        $this->auth_check = $savedAuth;
+        $this->auth_user = $savedUser;
+
+        if ($response->result == 1) {
+            if (!empty($response->order_primary_id)) {
+                $this->app_selcom_checkout_model->mark_completed($orderId, (int) $response->order_primary_id);
+            }
+            $this->session->set_flashdata('success', $response->message);
+            redirect($response->redirect_url);
+        } else {
+            $this->session->set_flashdata('error', $response->message);
+            redirect($response->redirect_url);
+        }
     }
 
     //get shipping method by location

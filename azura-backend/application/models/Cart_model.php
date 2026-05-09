@@ -640,4 +640,90 @@ class Cart_model extends CI_Model
             'zip_code' => $this->input->post('billing_zip_code', true)
         );
     }
+
+    /**
+     * Build priced cart from simple API lines [{product_id, quantity}] for Selcom / mobile checkout.
+     * Rejects physical+shipping marketplace carts and products with visible variations (use website).
+     *
+     * @return array With keys error, or cart_final, cart_total, payment_amount
+     */
+    public function prepare_checkout_from_api_lines($lines)
+    {
+        if (!is_array($lines) || empty($lines)) {
+            return array('error' => 'lines required');
+        }
+        $this->load->model('variation_model');
+        $raw = array();
+        foreach ($lines as $line) {
+            if (!is_array($line)) {
+                return array('error' => 'Invalid line item');
+            }
+            $pid = isset($line['product_id']) ? (int) $line['product_id'] : 0;
+            $qty = isset($line['quantity']) ? (int) $line['quantity'] : 0;
+            if ($pid < 1 || $qty < 1) {
+                return array('error' => 'Each line needs product_id and quantity');
+            }
+            $product = $this->product_model->get_active_product($pid);
+            if (empty($product) || (int) $product->status !== 1) {
+                return array('error' => 'Product not available');
+            }
+            if ($product->product_type === 'physical' && (int) $this->product_settings->marketplace_shipping === 1) {
+                return array('error' => 'Physical items with shipping must be purchased on the website.');
+            }
+            $vars = $this->variation_model->get_product_variations($pid);
+            if (!empty($vars)) {
+                foreach ($vars as $v) {
+                    if (!empty($v->is_visible) && (int) $v->is_visible === 1) {
+                        return array('error' => 'This product has options — purchase on the website.');
+                    }
+                }
+            }
+            if ($product->product_type === 'digital') {
+                $qty = 1;
+            }
+            $item = new stdClass();
+            $item->cart_item_id = generate_unique_id();
+            $item->product_id = $product->id;
+            $item->product_type = $product->product_type;
+            $item->product_title = get_product_title($product);
+            $item->options_array = array();
+            $item->quantity = $qty;
+            $item->unit_price = null;
+            $item->total_price = null;
+            $item->discount_rate = 0;
+            $item->currency = $this->selected_currency->code;
+            $item->product_vat = 0;
+            $item->is_stock_available = null;
+            $item->purchase_type = 'product';
+            $item->quote_request_id = 0;
+            $raw[] = $item;
+        }
+
+        $this->session->set_userdata('mds_shopping_cart', $raw);
+        $enriched = $this->get_sess_cart_items();
+        if (empty($enriched)) {
+            $this->session->unset_userdata('mds_shopping_cart');
+            return array('error' => 'Could not build cart');
+        }
+        $cart_total = $this->calculate_cart_total($enriched, null, false);
+        if (empty($cart_total) || (float) $cart_total->total <= 0 || (int) $cart_total->is_stock_available !== 1) {
+            $this->session->unset_userdata('mds_shopping_cart');
+            $this->session->unset_userdata('mds_shopping_cart_total');
+            return array('error' => 'Cart is invalid or out of stock');
+        }
+
+        $pm = new stdClass();
+        $pm->payment_option = 'selcom';
+        $this->session->set_userdata('mds_cart_payment_method', $pm);
+        $converted = $this->convert_currency_by_payment_gateway($cart_total->total, 'sale');
+        $this->session->unset_userdata('mds_cart_payment_method');
+        $this->session->unset_userdata('mds_shopping_cart');
+        $this->session->unset_userdata('mds_shopping_cart_total');
+
+        return array(
+            'cart_final' => $enriched,
+            'cart_total' => $cart_total,
+            'payment_amount' => $converted,
+        );
+    }
 }

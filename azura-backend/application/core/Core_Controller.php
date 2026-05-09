@@ -229,6 +229,47 @@ class Home_Core_Controller extends Core_Controller
 
         return array('per_page' => $per_page, 'offset' => $page * $per_page, 'current_page' => $page + 1);
     }
+
+    /**
+     * CORS for Flutter and other API clients (aligned with V1 controller).
+     */
+    protected function api_flutter_set_cors()
+    {
+        $origin = $this->input->server('HTTP_ORIGIN');
+        $allowed_origins = array(
+            'http://localhost:8080',
+            'http://localhost:3000',
+            'http://127.0.0.1:8080',
+            'http://127.0.0.1:3000',
+            'https://web-five-tau-70.vercel.app',
+            'https://web-vi5fbwp80-dawson-s-projects.vercel.app',
+            'https://azuramall.shop',
+            'https://www.azuramall.shop',
+            'https://azuramall.com',
+            'https://www.azuramall.com',
+        );
+        $allow_origin = null;
+        if ($origin) {
+            if (preg_match('/^https:\/\/.*\.vercel\.app$/', $origin)) {
+                $allow_origin = $origin;
+            } elseif (in_array($origin, $allowed_origins)) {
+                $allow_origin = $origin;
+            } elseif (preg_match('/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/', $origin)) {
+                $allow_origin = $origin;
+            }
+        }
+        if ($allow_origin) {
+            $this->output->set_header('Access-Control-Allow-Origin: ' . $allow_origin);
+        } elseif ($origin && (strpos($origin, 'http://localhost') === 0 || strpos($origin, 'http://127.0.0.1') === 0)) {
+            $this->output->set_header('Access-Control-Allow-Origin: ' . $origin);
+        } elseif ($origin && preg_match('/\.vercel\.app$/', $origin)) {
+            $this->output->set_header('Access-Control-Allow-Origin: ' . $origin);
+        }
+        $this->output->set_header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        $this->output->set_header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+        $this->output->set_header('Access-Control-Allow-Credentials: true');
+        $this->output->set_header('Access-Control-Max-Age: 86400');
+    }
 }
 
 class Admin_Core_Controller extends Core_Controller

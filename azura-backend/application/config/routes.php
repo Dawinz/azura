@@ -20,9 +20,12 @@ $route['error-404'] = 'home_controller/error_404';
 $route['frame'] = 'frame/index';
 // API v1 for Flutter app
 $route['v1/ping'] = 'v1/ping';
+$route['v1/checkout/selcom/init']['POST'] = 'cart_controller/api_selcom_checkout_init';
+$route['selcom-app-payment-return'] = 'cart_controller/selcom_app_payment_return';
 $route['v1/create_admin'] = 'v1/create_admin';
 $route['v1/create_user'] = 'v1/create_user';
 $route['v1/user/register'] = 'v1/user_register';
+$route['v1/user/delete']['POST'] = 'v1/user_delete_account';
 $route['v1/auth/login'] = 'v1/auth_login';
 $route['v1/category/list'] = 'v1/category_list';
 $route['v1/product/list'] = 'v1/product_list';
@@ -116,6 +119,7 @@ foreach ($languages as $language) {
         $route[$key . getr('blog', $rts) . '/(:any)']['GET'] = 'home_controller/blog_category/$1';
         $route[$key . getr('blog', $rts) . '/' . getr('tag', $rts) . '/(:any)']['GET'] = 'home_controller/tag/$1';
         $route[$key . getr('blog', $rts) . '/(:any)/(:any)']['GET'] = 'home_controller/post/$1/$2';
+        $route[$key . 'support']['GET'] = 'home_controller/support';
         /*contact*/
         $route[$key . getr('contact', $rts)]['GET'] = 'home_controller/contact';
         /*messages*/

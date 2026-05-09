@@ -461,7 +461,7 @@ $config['csrf_token_name'] = 'csrf_mds_token';
 $config['csrf_cookie_name'] = 'csrf_mds_token';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = TRUE;
-$config['csrf_exclude_uris'] = array('iyzico-payment-post', 'stripe-payment-post', 'mds-run-internal-cron', 'v1/auth/login', 'v1/user/register', 'v1/create_user', 'v1/create_admin');
+$config['csrf_exclude_uris'] = array('iyzico-payment-post', 'stripe-payment-post', 'mds-run-internal-cron', 'v1/auth/login', 'v1/user/register', 'v1/user/delete', 'v1/create_user', 'v1/create_admin', 'v1/checkout/selcom/init', 'selcom-payment-webhook');
 
 /*
 |--------------------------------------------------------------------------

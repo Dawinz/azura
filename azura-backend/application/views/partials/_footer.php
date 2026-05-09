@@ -25,6 +25,7 @@
                                 <div class="row-custom">
                                     <ul>
                                         <li><a href="<?php echo lang_base_url(); ?>"><?php echo trans("home"); ?></a></li>
+                                        <li><a href="<?php echo lang_base_url(); ?>support">Support</a></li>
                                         <?php if (!empty($this->menu_links)):
                                             foreach ($this->menu_links as $menu_link):
                                                 if ($menu_link->location == 'quick_links'):

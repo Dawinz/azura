@@ -6,6 +6,10 @@ node_modules
 uploads/
 application/cache/
 application/logs/
+# Heavy vendored dependencies cause Railway snapshot failures.
+# Nixpacks installs PHP dependencies during build.
+application/third_party/**/vendor/
+application/libraries/**/vendor/
 # Keep vvv/sql for database import script (do not ignore)
 # vvv/
 *.md
