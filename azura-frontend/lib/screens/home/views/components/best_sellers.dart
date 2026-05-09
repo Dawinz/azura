@@ -41,8 +41,11 @@ class BestSellers extends StatelessWidget {
                           ? defaultPadding
                           : 0,
                     ),
-                    child: ProductCard(
-                      product: snapshot.data![index],
+                    child: SizedBox(
+                      width: 168,
+                      child: ProductCard(
+                        product: snapshot.data![index],
+                      ),
                     ),
                   ),
                 );

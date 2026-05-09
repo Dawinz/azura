@@ -31,49 +31,57 @@ class ProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: press,
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius:
-                        BorderRadius.all(Radius.circular(defaultBorderRadious)),
-                  ),
-                  child: product.image.isEmpty
-                      ? const ColoredBox(
-                          color: Colors.black12,
-                          child: Center(
-                            child: Icon(Icons.image_not_supported_outlined),
-                          ),
-                        )
-                      : Image.network(
-                          product.image,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const ColoredBox(
-                            color: Colors.black12,
-                            child: Center(
-                              child: Icon(Icons.broken_image_outlined),
-                            ),
-                          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: press,
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(defaultBorderRadious),
                         ),
-                ),
-                const SizedBox(height: defaultPadding / 2),
-                Text(
-                  product.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-              ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: product.image.isEmpty
+                          ? const ColoredBox(
+                              color: Colors.black12,
+                              child: Center(
+                                child: Icon(Icons.image_not_supported_outlined),
+                              ),
+                            )
+                          : Image.network(
+                              product.image,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const ColoredBox(
+                                color: Colors.black12,
+                                child: Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: defaultPadding / 2),
+                  Text(
+                    product.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const Spacer(),
           Row(
             children: [
               Expanded(
@@ -83,11 +91,19 @@ class ProductCard extends StatelessWidget {
                   child: Text(
                     MarketFormat.formatAmount(product.price),
                     style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
               IconButton(
                 tooltip: 'Add to cart',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+                visualDensity: VisualDensity.compact,
                 onPressed: () {
                   final ok = cartProvider.addToCart(product);
                   if (!context.mounted) return;
@@ -102,7 +118,7 @@ class ProductCard extends StatelessWidget {
                     ),
                   );
                 },
-                icon: const Icon(Icons.add_shopping_cart_outlined),
+                icon: const Icon(Icons.add_shopping_cart_outlined, size: 22),
               ),
             ],
           ),

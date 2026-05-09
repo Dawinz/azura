@@ -42,15 +42,18 @@ class PopularProducts extends StatelessWidget {
                           ? defaultPadding
                           : 0,
                     ),
-                    child: ProductCard(
-                      product: snapshot.data![index],
-                      press: () {
-                        Navigator.pushNamed(
-                          context,
-                          productDetailsScreenRoute,
-                          arguments: snapshot.data![index],
-                        );
-                      },
+                    child: SizedBox(
+                      width: 168,
+                      child: ProductCard(
+                        product: snapshot.data![index],
+                        press: () {
+                          Navigator.pushNamed(
+                            context,
+                            productDetailsScreenRoute,
+                            arguments: snapshot.data![index],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 );
