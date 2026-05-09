@@ -32,6 +32,7 @@ $route['v1/location/countries'] = 'v1/location_countries';
 $route['v1/location/states'] = 'v1/location_states';
 $route['v1/product/list'] = 'v1/product_list';
 $route['v1/debug/categories'] = 'v1/debug_categories';
+$route['v1/demo/seed-catalog']['POST'] = 'v1/demo_seed_catalog';
 // Flutter app — additional V1 / api/v1 endpoints (see Flutter_v1_trait.php)
 $route['v1/banner/list'] = 'v1/banner_list';
 $route['v1/product/detail_get'] = 'v1/product_detail_get';

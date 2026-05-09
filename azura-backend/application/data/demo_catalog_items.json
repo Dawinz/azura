@@ -1,0 +1,250 @@
+[
+{
+"n": 1,
+"slug": "demo-azura-001-linen-blend-shirt",
+"title": "Linen blend shirt — demo",
+"description": "Breathable linen-blend shirt for everyday wear. Demo listing for Azura Mall.",
+"price": 1490000,
+"pic": 11
+},
+{
+"n": 2,
+"slug": "demo-azura-002-canvas-sneakers",
+"title": "Canvas sneakers — demo",
+"description": "Comfortable canvas sneakers with rubber sole. Demo SKU for catalog testing.",
+"price": 8900000,
+"pic": 13
+},
+{
+"n": 3,
+"slug": "demo-azura-003-ceramic-dinner-plate-set",
+"title": "Ceramic dinner plate set — demo",
+"description": "Set of four ceramic plates for dining. Demo product imagery via CDN.",
+"price": 3200000,
+"pic": 21
+},
+{
+"n": 4,
+"slug": "demo-azura-004-stainless-steel-water-bottle",
+"title": "Stainless steel water bottle — demo",
+"description": "Insulated bottle keeps drinks cold or warm. Demo listing.",
+"price": 4500000,
+"pic": 29
+},
+{
+"n": 5,
+"slug": "demo-azura-005-wireless-earbuds-case",
+"title": "Wireless earbuds case — demo",
+"description": "Protective silicone case for earbuds. Demo marketplace item.",
+"price": 2200000,
+"pic": 31
+},
+{
+"n": 6,
+"slug": "demo-azura-006-woven-storage-basket",
+"title": "Woven storage basket — demo",
+"description": "Handwoven basket for home organisation. Demo SKU.",
+"price": 1890000,
+"pic": 36
+},
+{
+"n": 7,
+"slug": "demo-azura-007-cotton-throw-blanket",
+"title": "Cotton throw blanket — demo",
+"description": "Soft cotton throw for sofas and beds. Demo listing.",
+"price": 2790000,
+"pic": 42
+},
+{
+"n": 8,
+"slug": "demo-azura-008-desk-led-lamp",
+"title": "Desk LED lamp — demo",
+"description": "Adjustable LED desk lamp with warm light. Demo product.",
+"price": 3500000,
+"pic": 48
+},
+{
+"n": 9,
+"slug": "demo-azura-009-leather-card-holder",
+"title": "Leather card holder — demo",
+"description": "Slim leather holder for cards and cash. Demo SKU.",
+"price": 950000,
+"pic": 52
+},
+{
+"n": 10,
+"slug": "demo-azura-010-kids-cotton-tee",
+"title": "Kids cotton tee — demo",
+"description": "Breathable cotton t-shirt for kids. Demo listing.",
+"price": 1290000,
+"pic": 57
+},
+{
+"n": 11,
+"slug": "demo-azura-011-glass-meal-prep-containers",
+"title": "Glass meal prep containers — demo",
+"description": "Stackable glass containers with lids. Demo item.",
+"price": 4100000,
+"pic": 63
+},
+{
+"n": 12,
+"slug": "demo-azura-012-yoga-mat-strap",
+"title": "Yoga mat strap — demo",
+"description": "Adjustable strap for carrying yoga mats. Demo SKU.",
+"price": 550000,
+"pic": 67
+},
+{
+"n": 13,
+"slug": "demo-azura-013-bamboo-cutting-board",
+"title": "Bamboo cutting board — demo",
+"description": "Durable bamboo board for food prep. Demo listing.",
+"price": 1750000,
+"pic": 71
+},
+{
+"n": 14,
+"slug": "demo-azura-014-travel-neck-pillow",
+"title": "Travel neck pillow — demo",
+"description": "Memory foam neck pillow for travel. Demo product.",
+"price": 990000,
+"pic": 74
+},
+{
+"n": 15,
+"slug": "demo-azura-015-usb-c-charging-cable",
+"title": "USB-C charging cable — demo",
+"description": "Braided USB-C cable for phones and tablets. Demo SKU.",
+"price": 650000,
+"pic": 78
+},
+{
+"n": 16,
+"slug": "demo-azura-016-ceramic-mug-pair",
+"title": "Ceramic mug pair — demo",
+"description": "Two minimalist ceramic mugs. Demo marketplace listing.",
+"price": 1150000,
+"pic": 82
+},
+{
+"n": 17,
+"slug": "demo-azura-017-running-shorts",
+"title": "Running shorts — demo",
+"description": "Lightweight shorts for training. Demo item.",
+"price": 2100000,
+"pic": 85
+},
+{
+"n": 18,
+"slug": "demo-azura-018-wall-clock-silent",
+"title": "Wall clock silent — demo",
+"description": "Silent sweeping wall clock. Demo SKU.",
+"price": 3200000,
+"pic": 88
+},
+{
+"n": 19,
+"slug": "demo-azura-019-plant-stand-wooden",
+"title": "Plant stand wooden — demo",
+"description": "Wooden stand for indoor plants. Demo listing.",
+"price": 1550000,
+"pic": 91
+},
+{
+"n": 20,
+"slug": "demo-azura-020-scented-candle-tin",
+"title": "Scented candle tin — demo",
+"description": "Small scented candle in travel tin. Demo product.",
+"price": 780000,
+"pic": 93
+},
+{
+"n": 21,
+"slug": "demo-azura-021-backpack-daypack",
+"title": "Backpack daypack — demo",
+"description": "Compact backpack for daily commute. Demo SKU.",
+"price": 6200000,
+"pic": 95
+},
+{
+"n": 22,
+"slug": "demo-azura-022-beach-towel-quick-dry",
+"title": "Beach towel quick-dry — demo",
+"description": "Quick-dry microfibre beach towel. Demo listing.",
+"price": 990000,
+"pic": 101
+},
+{
+"n": 23,
+"slug": "demo-azura-023-kitchen-spatula-set",
+"title": "Kitchen spatula set — demo",
+"description": "Heat-resistant silicone spatulas. Demo item.",
+"price": 480000,
+"pic": 103
+},
+{
+"n": 24,
+"slug": "demo-azura-024-phone-grip-stand",
+"title": "Phone grip stand — demo",
+"description": "Collapsible grip and stand for phones. Demo SKU.",
+"price": 340000,
+"pic": 107
+},
+{
+"n": 25,
+"slug": "demo-azura-025-facial-cotton-pads",
+"title": "Facial cotton pads — demo",
+"description": "Soft cotton pads for skincare. Demo listing.",
+"price": 120000,
+"pic": 111
+},
+{
+"n": 26,
+"slug": "demo-azura-026-dog-leash-nylon",
+"title": "Dog leash nylon — demo",
+"description": "Strong nylon leash with padded handle. Demo product.",
+"price": 450000,
+"pic": 119
+},
+{
+"n": 27,
+"slug": "demo-azura-027-notebook-dotted-a5",
+"title": "Notebook dotted A5 — demo",
+"description": "A5 dotted notebook for notes. Demo SKU.",
+"price": 890000,
+"pic": 124
+},
+{
+"n": 28,
+"slug": "demo-azura-028-electric-kettle-1l",
+"title": "Electric kettle 1L — demo",
+"description": "Stainless kettle with auto shut-off. Demo listing.",
+"price": 1250000,
+"pic": 129
+},
+{
+"n": 29,
+"slug": "demo-azura-029-sunglasses-polarized",
+"title": "Sunglasses polarized — demo",
+"description": "Polarized lenses with UV protection. Demo item.",
+"price": 6200000,
+"pic": 133
+},
+{
+"n": 30,
+"slug": "demo-azura-030-hiking-socks-merino",
+"title": "Hiking socks merino — demo",
+"description": "Merino blend socks for hiking. Demo SKU.",
+"price": 1750000,
+"pic": 137
+},
+{
+"n": 31,
+"slug": "demo-azura-031-bluetooth-speaker-mini",
+"title": "Bluetooth speaker mini — demo",
+"description": "Portable mini speaker with clear sound. Demo listing.",
+"price": 2100000,
+"pic": 140
+}
+]

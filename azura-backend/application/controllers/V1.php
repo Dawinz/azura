@@ -837,4 +837,174 @@ class V1 extends CI_Controller {
 
         $this->output->set_output(json_encode($out));
     }
+
+    /**
+     * POST /v1/demo/seed-catalog
+     * Body JSON: { "key": "<same as DEMO_SEED_KEY env>" }
+     *
+     * Inserts demo physical products (SKU AZ-DEMO-*) with CDN images into the live DB.
+     * Git deploy does not run SQL files — use this once after setting DEMO_SEED_KEY on Railway,
+     * then remove or rotate the env var. Disabled when DEMO_SEED_KEY is unset.
+     */
+    public function demo_seed_catalog() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        if (strtoupper($this->input->server('REQUEST_METHOD') ?: '') !== 'POST') {
+            $this->output->set_status_header(405);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Method not allowed')));
+            return;
+        }
+        $expected = getenv('DEMO_SEED_KEY');
+        if ($expected === false || $expected === '') {
+            $this->output->set_status_header(404);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Not found')));
+            return;
+        }
+        $body = json_decode($this->input->raw_input_stream, true);
+        $key = (is_array($body) && !empty($body['key'])) ? $body['key'] : $this->input->post('key', true);
+        if (!is_string($key) || !hash_equals((string) $expected, $key)) {
+            $this->output->set_status_header(403);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Forbidden')));
+            return;
+        }
+        $path = APPPATH . 'data/demo_catalog_items.json';
+        if (!is_readable($path)) {
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Seed data file missing')));
+            return;
+        }
+        $items = json_decode(file_get_contents($path), true);
+        if (!is_array($items) || empty($items)) {
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Invalid seed data')));
+            return;
+        }
+        try {
+            $seller_row = $this->db->query(
+                "SELECT id FROM users WHERE banned = 0 AND role IN ('vendor', 'admin') ORDER BY (role = 'vendor') DESC, id ASC LIMIT 1"
+            )->row();
+            if (empty($seller_row)) {
+                $seller_row = $this->db->query(
+                    "SELECT id FROM users WHERE banned = 0 ORDER BY id ASC LIMIT 1"
+                )->row();
+            }
+            $seller_id = !empty($seller_row) ? (int) $seller_row->id : 1;
+
+            $cat_row = $this->db->query(
+                "SELECT MIN(id) AS id FROM categories WHERE visibility = 1"
+            )->row();
+            $cat_id = (!empty($cat_row) && (int) $cat_row->id > 0) ? (int) $cat_row->id : 1;
+
+            $cur_row = $this->db->query(
+                "SELECT default_currency FROM payment_settings WHERE id = 1 LIMIT 1"
+            )->row();
+            $currency = (!empty($cur_row) && $cur_row->default_currency !== '')
+                ? $cur_row->default_currency
+                : 'TZS';
+
+            $this->db->trans_begin();
+
+            $old = $this->db->query("SELECT id FROM products WHERE sku LIKE 'AZ-DEMO-%'")->result();
+            foreach ($old as $or) {
+                $pid = (int) $or->id;
+                $this->db->where('product_id', $pid)->delete('images');
+                $this->db->where('product_id', $pid)->delete('product_details');
+                $this->db->where('id', $pid)->delete('products');
+            }
+
+            $now = date('Y-m-d H:i:s');
+            $inserted = 0;
+            foreach ($items as $it) {
+                if (!is_array($it) || empty($it['slug']) || empty($it['n'])) {
+                    continue;
+                }
+                $n = (int) $it['n'];
+                $sku = 'AZ-DEMO-' . str_pad((string) $n, 3, '0', STR_PAD_LEFT);
+                $title = isset($it['title']) ? (string) $it['title'] : $sku;
+                $desc = isset($it['description']) ? (string) $it['description'] : '';
+                $price = isset($it['price']) ? (int) $it['price'] : 0;
+                $pic = isset($it['pic']) ? (int) $it['pic'] : 10;
+
+                $pdata = array(
+                    'slug' => substr($it['slug'], 0, 200),
+                    'product_type' => 'physical',
+                    'listing_type' => 'sell_on_site',
+                    'sku' => $sku,
+                    'category_id' => $cat_id,
+                    'price' => $price,
+                    'currency' => $currency,
+                    'discount_rate' => 0,
+                    'vat_rate' => 0,
+                    'user_id' => $seller_id,
+                    'status' => 1,
+                    'is_promoted' => 0,
+                    'promote_start_date' => $now,
+                    'promote_end_date' => $now,
+                    'promote_plan' => 'none',
+                    'promote_day' => 0,
+                    'is_special_offer' => 0,
+                    'visibility' => 1,
+                    'rating' => '0',
+                    'stock' => 40,
+                    'shipping_delivery_time_id' => 0,
+                    'multiple_sale' => 1,
+                    'is_deleted' => 0,
+                    'is_draft' => 0,
+                    'created_at' => $now,
+                );
+                $this->db->insert('products', $pdata);
+                $pid = (int) $this->db->insert_id();
+                if ($pid < 1) {
+                    throw new RuntimeException('Insert product failed');
+                }
+                $this->db->insert('product_details', array(
+                    'product_id' => $pid,
+                    'lang_id' => 1,
+                    'title' => $title,
+                    'description' => $desc,
+                    'seo_title' => $title,
+                    'seo_description' => substr($desc, 0, 500),
+                    'seo_keywords' => 'demo, azura, marketplace',
+                ));
+                $base = 'https://picsum.photos/id/' . $pic . '/';
+                $this->db->insert('images', array(
+                    'product_id' => $pid,
+                    'image_default' => $base . '800/800',
+                    'image_big' => $base . '1200/1200',
+                    'image_small' => $base . '600/600',
+                    'is_main' => 1,
+                    'storage' => 'local',
+                ));
+                $inserted++;
+            }
+
+            if ($this->db->trans_status() === false) {
+                $this->db->trans_rollback();
+                throw new RuntimeException('Transaction failed');
+            }
+            $this->db->trans_commit();
+
+            $this->load->helper('custom');
+            if (function_exists('reset_cache_data')) {
+                reset_cache_data($this, null, true);
+            }
+
+            $this->output->set_output(json_encode(array(
+                'success' => true,
+                'inserted' => $inserted,
+                'seller_id' => $seller_id,
+                'category_id' => $cat_id,
+                'currency' => $currency,
+                'hint' => 'Pull-to-refresh the mobile app catalog. Unset DEMO_SEED_KEY when done.',
+            )));
+        } catch (Throwable $e) {
+            $this->db->trans_rollback();
+            log_message('error', 'V1 demo_seed_catalog: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array(
+                'success' => false,
+                'error' => 'Seed failed: ' . $e->getMessage(),
+            )));
+        }
+    }
 }
