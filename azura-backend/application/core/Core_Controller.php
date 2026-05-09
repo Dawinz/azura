@@ -60,8 +60,16 @@ class Core_Controller extends CI_Controller
         //currencies
         $this->currencies = $this->currency_model->get_currencies_array();
         $this->default_currency = $this->currency_model->get_default_currency($this->currencies, $this->payment_settings);
-        //countries
+        //countries (fallback to all countries if active list is empty/misconfigured)
         $this->countries = $this->location_model->get_active_countries();
+        if (empty($this->countries)) {
+            $this->countries = $this->location_model->get_countries();
+        } elseif (count($this->countries) === 1) {
+            $only_country_name = strtolower(trim((string)($this->countries[0]->name ?? '')));
+            if ($only_country_name === 'country') {
+                $this->countries = $this->location_model->get_countries();
+            }
+        }
         //check auth
         $this->auth_check = auth_check();
         if ($this->auth_check) {
