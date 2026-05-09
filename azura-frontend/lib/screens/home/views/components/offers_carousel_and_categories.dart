@@ -8,7 +8,8 @@ import 'package:shop/core/app_config.dart';
 import 'package:shop/models/banner_model.dart';
 import 'package:shop/models/category_model.dart';
 import 'package:shop/route/route_constants.dart';
-import 'package:shop/screens/home/views/components/categories.dart' hide CategoryModel;
+import 'package:shop/screens/home/views/components/categories.dart'
+    hide CategoryModel;
 import 'package:url_launcher/url_launcher.dart';
 
 class OffersCarouselAndCategories extends StatefulWidget {
@@ -21,6 +22,11 @@ class OffersCarouselAndCategories extends StatefulWidget {
 
 class OffersCarouselAndCategoriesState
     extends State<OffersCarouselAndCategories> {
+  static const Set<String> _allowedHosts = {
+    'azuramall.shop',
+    'www.azuramall.shop',
+  };
+
   late Future<List<dynamic>> _bannersFuture;
   late Future<List<CategoryModel>> _categoriesFuture;
 
@@ -66,6 +72,7 @@ class OffersCarouselAndCategoriesState
               image: image,
               press: () async {
                 if (link.isEmpty) return;
+                final messenger = ScaffoldMessenger.of(context);
                 Uri uri;
                 if (link.startsWith('http://') || link.startsWith('https://')) {
                   uri = Uri.parse(link);
@@ -73,9 +80,22 @@ class OffersCarouselAndCategoriesState
                   final path = link.startsWith('/') ? link : '/$link';
                   uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
                 }
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                final isWebLink = uri.scheme == 'http' || uri.scheme == 'https';
+                if (isWebLink && !_allowedHosts.contains(uri.host)) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('This link is not available in the app.'),
+                    ),
+                  );
+                  return;
                 }
+                if (!await canLaunchUrl(uri)) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Could not open link')),
+                  );
+                  return;
+                }
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
               children: [
                 if (title.isNotEmpty)

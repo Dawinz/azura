@@ -37,8 +37,9 @@ class _EnableNotificationScreenState extends State<EnableNotificationScreen> {
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                        _enabled ? 'Notifications enabled' : 'Notifications disabled'),
+                    content: Text(_enabled
+                        ? 'Notifications enabled'
+                        : 'Notifications disabled'),
                   ),
                 );
               },

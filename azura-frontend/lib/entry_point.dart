@@ -1,7 +1,9 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'package:shop/constants.dart';
+import 'package:shop/providers/cart_provider.dart';
 import 'package:shop/route/screen_export.dart';
 
 class EntryPoint extends StatefulWidget {
@@ -22,6 +24,23 @@ class _EntryPointState extends State<EntryPoint> {
   ];
   int _currentIndex = 0;
 
+  String _titleForTab(int index) {
+    switch (index) {
+      case 0:
+        return 'Shop';
+      case 1:
+        return 'Discover';
+      case 2:
+        return 'Bookmarks';
+      case 3:
+        return 'Cart';
+      case 4:
+        return 'Profile';
+      default:
+        return 'Azuramall';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SvgPicture svgIcon(String src, {Color? color}) {
@@ -30,26 +49,29 @@ class _EntryPointState extends State<EntryPoint> {
         height: 24,
         colorFilter: ColorFilter.mode(
             color ??
-                Theme.of(context).iconTheme.color!.withOpacity(
-                    Theme.of(context).brightness == Brightness.dark ? 0.3 : 1),
+                Theme.of(context).iconTheme.color!.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.3
+                      : 1,
+                ),
             BlendMode.srcIn),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        // pinned: true,
-        // floating: true,
-        // snap: true,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        leading: const SizedBox(),
-        leadingWidth: 0,
-        centerTitle: false,
-        title: Image.asset(
-          "assets/logo/logo.jpg",
-          height: 28,
-          fit: BoxFit.contain,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Image.asset(
+            'assets/logo/logo.jpg',
+            height: 28,
+            fit: BoxFit.contain,
+          ),
         ),
+        leadingWidth: 56,
+        centerTitle: true,
+        title: Text(_titleForTab(_currentIndex)),
         actions: [
           IconButton(
             onPressed: () {
@@ -89,59 +111,79 @@ class _EntryPointState extends State<EntryPoint> {
         },
         child: _pages[_currentIndex],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.only(top: defaultPadding / 2),
-        color: Theme.of(context).brightness == Brightness.light
-            ? Colors.white
-            : const Color(0xFF101015),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            if (index != _currentIndex) {
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          },
-          backgroundColor: Theme.of(context).brightness == Brightness.light
-              ? Colors.white
-              : const Color(0xFF101015),
-          type: BottomNavigationBarType.fixed,
-          // selectedLabelStyle: TextStyle(color: primaryColor),
-          selectedFontSize: 12,
-          selectedItemColor: primaryColor,
-          unselectedItemColor: Colors.transparent,
-          items: [
-            BottomNavigationBarItem(
-              icon: svgIcon("assets/icons/Shop.svg"),
-              activeIcon: svgIcon("assets/icons/Shop.svg", color: primaryColor),
-              label: "Shop",
+      bottomNavigationBar: Consumer<CartProvider>(
+        builder: (context, cart, _) {
+          Widget cartIcon({required bool active}) {
+            final icon = svgIcon(
+              "assets/icons/Bag.svg",
+              color: active ? primaryColor : null,
+            );
+            final count = cart.cartQuantity;
+            if (count <= 0) return icon;
+            return Badge(
+              label: Text(
+                count > 99 ? '99+' : '$count',
+                style: const TextStyle(fontSize: 10),
+              ),
+              child: icon,
+            );
+          }
+
+          return Container(
+            padding: const EdgeInsets.only(top: defaultPadding / 2),
+            color: Theme.of(context).brightness == Brightness.light
+                ? Colors.white
+                : const Color(0xFF101015),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                if (index != _currentIndex) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                }
+              },
+              backgroundColor: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white
+                  : const Color(0xFF101015),
+              type: BottomNavigationBarType.fixed,
+              selectedFontSize: 12,
+              selectedItemColor: primaryColor,
+              unselectedItemColor: Colors.transparent,
+              items: [
+                BottomNavigationBarItem(
+                  icon: svgIcon("assets/icons/Shop.svg"),
+                  activeIcon:
+                      svgIcon("assets/icons/Shop.svg", color: primaryColor),
+                  label: "Shop",
+                ),
+                BottomNavigationBarItem(
+                  icon: svgIcon("assets/icons/Category.svg"),
+                  activeIcon: svgIcon("assets/icons/Category.svg",
+                      color: primaryColor),
+                  label: "Discover",
+                ),
+                BottomNavigationBarItem(
+                  icon: svgIcon("assets/icons/Bookmark.svg"),
+                  activeIcon: svgIcon("assets/icons/Bookmark.svg",
+                      color: primaryColor),
+                  label: "Bookmark",
+                ),
+                BottomNavigationBarItem(
+                  icon: cartIcon(active: false),
+                  activeIcon: cartIcon(active: true),
+                  label: "Cart",
+                ),
+                BottomNavigationBarItem(
+                  icon: svgIcon("assets/icons/Profile.svg"),
+                  activeIcon: svgIcon("assets/icons/Profile.svg",
+                      color: primaryColor),
+                  label: "Profile",
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: svgIcon("assets/icons/Category.svg"),
-              activeIcon:
-                  svgIcon("assets/icons/Category.svg", color: primaryColor),
-              label: "Discover",
-            ),
-            BottomNavigationBarItem(
-              icon: svgIcon("assets/icons/Bookmark.svg"),
-              activeIcon:
-                  svgIcon("assets/icons/Bookmark.svg", color: primaryColor),
-              label: "Bookmark",
-            ),
-            BottomNavigationBarItem(
-              icon: svgIcon("assets/icons/Bag.svg"),
-              activeIcon: svgIcon("assets/icons/Bag.svg", color: primaryColor),
-              label: "Cart",
-            ),
-            BottomNavigationBarItem(
-              icon: svgIcon("assets/icons/Profile.svg"),
-              activeIcon:
-                  svgIcon("assets/icons/Profile.svg", color: primaryColor),
-              label: "Profile",
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

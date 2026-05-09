@@ -1000,6 +1000,8 @@ class Cart_controller extends Home_Core_Controller
                                 }
                             }
 
+                            $this->restore_app_selcom_shipping_session($row);
+
                             $this->session->set_userdata('mds_shopping_cart_final', $cartFinal);
                             $this->session->set_userdata('mds_shopping_cart_total_final', $cartTotal);
                             $txRef = !empty($statusData['reference']) ? $statusData['reference'] : (!empty($statusData['transid']) ? $statusData['transid'] : $orderId);
@@ -1336,6 +1338,10 @@ class Cart_controller extends Home_Core_Controller
         }
 
         $lines = isset($input['lines']) ? $input['lines'] : array();
+        $shipping_address = null;
+        if (!empty($input['shipping_address']) && is_array($input['shipping_address'])) {
+            $shipping_address = $input['shipping_address'];
+        }
         $auth_header = $this->input->get_request_header('Authorization', true);
         $user = null;
         if (!empty($auth_header) && preg_match('/Bearer\s+(\S+)/i', $auth_header, $m)) {
@@ -1393,7 +1399,11 @@ class Cart_controller extends Home_Core_Controller
             return;
         }
 
-        $prepared = $this->cart_model->prepare_checkout_from_api_lines($lines);
+        if (!empty($shipping_address) && empty($shipping_address['email'])) {
+            $shipping_address['email'] = $buyer_email;
+        }
+
+        $prepared = $this->cart_model->prepare_checkout_from_api_lines($lines, $shipping_address);
         if (!empty($prepared['error'])) {
             $this->output->set_status_header(400);
             $this->output->set_output(json_encode(array('success' => false, 'error' => $prepared['error'])));
@@ -1407,7 +1417,7 @@ class Cart_controller extends Home_Core_Controller
         $orderToken = generate_token();
 
         $this->load->model('app_selcom_checkout_model');
-        $this->app_selcom_checkout_model->insert_pending(array(
+        $pending_row = array(
             'order_token' => $orderToken,
             'user_id' => !empty($user) ? (int) $user->id : null,
             'buyer_email' => $buyer_email,
@@ -1418,7 +1428,11 @@ class Cart_controller extends Home_Core_Controller
             'currency' => (string) $payAmt->currency,
             'total_amount' => (float) $payAmt->total,
             'status' => 'pending',
-        ));
+        );
+        if (!empty($prepared['shipping_snapshot'])) {
+            $pending_row['shipping_json'] = json_encode($prepared['shipping_snapshot']);
+        }
+        $this->app_selcom_checkout_model->insert_pending($pending_row);
 
         $returnUrl = base_url() . 'selcom-app-payment-return?payment_type=sale&order_id=' . rawurlencode($orderToken);
         $webhookUrl = base_url() . 'selcom-payment-webhook?order_id=' . rawurlencode($orderToken);
@@ -1481,6 +1495,42 @@ class Cart_controller extends Home_Core_Controller
             'amount' => $amount,
             'currency' => strtoupper((string) $payAmt->currency),
         )));
+    }
+
+    /**
+     * Restore shipping session saved during app Selcom init (required for order_shipping rows).
+     */
+    private function restore_app_selcom_shipping_session($row)
+    {
+        if (empty($row) || empty($row->shipping_json)) {
+            return;
+        }
+        $snap = json_decode($row->shipping_json, true);
+        if (!is_array($snap)) {
+            return;
+        }
+        if (!empty($snap['cart_shipping'])) {
+            $cs = json_decode(json_encode($snap['cart_shipping']), false);
+            $this->session->set_userdata('mds_cart_shipping', $cs);
+        }
+        if (!empty($snap['mds_seller_shipping_costs']) && is_array($snap['mds_seller_shipping_costs'])) {
+            $costs = array();
+            foreach ($snap['mds_seller_shipping_costs'] as $sid => $data) {
+                if (!is_array($data)) {
+                    continue;
+                }
+                $o = new stdClass();
+                $o->shipping_method_id = (int) (isset($data['shipping_method_id']) ? $data['shipping_method_id'] : 0);
+                $o->cost = isset($data['cost']) ? (float) $data['cost'] : 0;
+                $costs[(int) $sid] = $o;
+            }
+            if (item_count($costs) > 0) {
+                $this->session->set_userdata('mds_seller_shipping_costs', $costs);
+            }
+        }
+        if (!empty($snap['mds_selected_shipping_method_ids'])) {
+            $this->session->set_userdata('mds_selected_shipping_method_ids', $snap['mds_selected_shipping_method_ids']);
+        }
     }
 
     /**
@@ -1552,6 +1602,8 @@ class Cart_controller extends Home_Core_Controller
             redirect(lang_base_url());
             return;
         }
+
+        $this->restore_app_selcom_shipping_session($row);
 
         $savedAuth = $this->auth_check;
         $savedUser = isset($this->auth_user) ? $this->auth_user : null;

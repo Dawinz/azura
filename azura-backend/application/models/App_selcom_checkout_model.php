@@ -15,6 +15,9 @@ class App_selcom_checkout_model extends CI_Model
     public function ensure_schema()
     {
         if ($this->db->table_exists('app_selcom_checkouts')) {
+            if (!$this->db->field_exists('shipping_json', 'app_selcom_checkouts')) {
+                $this->db->query('ALTER TABLE `app_selcom_checkouts` ADD `shipping_json` LONGTEXT NULL');
+            }
             return;
         }
         $sql = "CREATE TABLE IF NOT EXISTS `app_selcom_checkouts` (

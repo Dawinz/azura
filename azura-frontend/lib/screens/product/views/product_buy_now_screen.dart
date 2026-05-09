@@ -43,7 +43,7 @@ class _ProductBuyNowScreenState extends State<ProductBuyNowScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  'This item is not available for purchase in the app. Use azuramall.shop in a browser.',
+                  'Digital items are not sold in this app. Choose a physical product.',
                 ),
               ),
             );

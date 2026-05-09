@@ -1104,13 +1104,55 @@ class ApiService {
     }
   }
 
+  /// GET /v1/location/countries
+  static Future<List<Map<String, dynamic>>> getLocationCountries() async {
+    final uri = Uri.parse('$_baseUrl/v1/location/countries');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load countries');
+    }
+    final dynamic decoded = json.decode(response.body);
+    if (decoded is! Map || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// GET /v1/location/states?country_id=
+  static Future<List<Map<String, dynamic>>> getLocationStates(
+      int countryId) async {
+    final uri = Uri.parse(
+        '$_baseUrl/v1/location/states?country_id=$countryId');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load regions');
+    }
+    final dynamic decoded = json.decode(response.body);
+    if (decoded is! Map || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   /// Starts Selcom hosted checkout. POST /v1/checkout/selcom/init
+  /// [shippingAddress] required when the store uses marketplace shipping (physical goods).
   static Future<SelcomCheckoutInitResult> initSelcomCheckout({
     required List<Map<String, dynamic>> lines,
     required String buyerName,
     required String buyerEmail,
     String? buyerPhone,
     String? bearerToken,
+    Map<String, dynamic>? shippingAddress,
   }) async {
     final uri = Uri.parse('$_baseUrl/v1/checkout/selcom/init');
     final headers = <String, String>{
@@ -1124,6 +1166,8 @@ class ApiService {
       'buyer_name': buyerName,
       'buyer_email': buyerEmail,
       if (buyerPhone != null && buyerPhone.isNotEmpty) 'buyer_phone': buyerPhone,
+      if (shippingAddress != null && shippingAddress.isNotEmpty)
+        'shipping_address': shippingAddress,
     });
     final response = await http.post(uri, headers: headers, body: body).timeout(_httpTimeout);
     dynamic decoded;

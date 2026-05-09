@@ -24,6 +24,15 @@ if (!function_exists('get_active_product')) {
     }
 }
 
+// purchasable without marketplace default-location filter (orders / mobile checkout)
+if (!function_exists('get_purchasable_product')) {
+    function get_purchasable_product($id)
+    {
+        $ci =& get_instance();
+        return $ci->product_model->get_purchasable_product($id);
+    }
+}
+
 //get product details
 if (!function_exists('get_product_details')) {
     function get_product_details($id, $lang_id, $get_main_on_null = true)

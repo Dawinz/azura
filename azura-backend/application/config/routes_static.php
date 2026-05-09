@@ -10,6 +10,7 @@ $route['connect-with-google'] = 'auth_controller/connect_with_google';
 $route['connect-with-vk'] = 'auth_controller/connect_with_vk';
 $route['logout'] = 'common_controller/logout';
 $route['support'] = 'home_controller/support';
+$route['privacy-policy'] = 'home_controller/privacy_policy';
 //auth
 $route['forgot-password-post']['POST'] = 'auth_controller/forgot_password_post';
 $route['reset-password-post']['POST'] = 'auth_controller/reset_password_post';

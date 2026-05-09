@@ -1,4 +1,3 @@
-
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -53,8 +52,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   Future<void> _fetchProductDetails() async {
     try {
       final stored = await StorageService.getUser();
-      final viewer =
-          (stored != null && stored.id.isNotEmpty) ? stored.id : '0';
+      final viewer = (stored != null && stored.id.isNotEmpty) ? stored.id : '0';
       final productDetails =
           await ApiService.getProductDetails(widget.product.slug, viewer);
       setState(() {
@@ -84,7 +82,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   const SliverAppBar(),
                   SliverToBoxAdapter(
                     child: ProductImages(
-                      images: _productDetails?.files ?? [_productDetails!.image],
+                      images:
+                          _productDetails?.files ?? [_productDetails!.image],
                     ),
                   ),
                   SliverPadding(
@@ -111,7 +110,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             style: const TextStyle(height: 1.5),
                           ),
                         ],
-                      ), 
+                      ),
                     ),
                   ),
                   const SliverToBoxAdapter(child: Divider()),

@@ -28,6 +28,8 @@ $route['v1/user/register'] = 'v1/user_register';
 $route['v1/user/delete']['POST'] = 'v1/user_delete_account';
 $route['v1/auth/login'] = 'v1/auth_login';
 $route['v1/category/list'] = 'v1/category_list';
+$route['v1/location/countries'] = 'v1/location_countries';
+$route['v1/location/states'] = 'v1/location_states';
 $route['v1/product/list'] = 'v1/product_list';
 $route['v1/debug/categories'] = 'v1/debug_categories';
 // Flutter app — additional V1 / api/v1 endpoints (see Flutter_v1_trait.php)
@@ -120,6 +122,7 @@ foreach ($languages as $language) {
         $route[$key . getr('blog', $rts) . '/' . getr('tag', $rts) . '/(:any)']['GET'] = 'home_controller/tag/$1';
         $route[$key . getr('blog', $rts) . '/(:any)/(:any)']['GET'] = 'home_controller/post/$1/$2';
         $route[$key . 'support']['GET'] = 'home_controller/support';
+        $route[$key . 'privacy-policy']['GET'] = 'home_controller/privacy_policy';
         /*contact*/
         $route[$key . getr('contact', $rts)]['GET'] = 'home_controller/contact';
         /*messages*/

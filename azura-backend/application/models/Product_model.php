@@ -363,6 +363,19 @@ class Product_model extends CI_Model
         }
     }
 
+    /**
+     * Storefront listings: exclude products that have no usable gallery image (empty image_small).
+     * Does not apply to seller dashboard lists (those use filter_user_products / Product_admin_model).
+     */
+    public function where_storefront_product_has_image()
+    {
+        $this->db->where(
+            'EXISTS (SELECT 1 FROM images img WHERE img.product_id = products.id AND img.image_small IS NOT NULL AND TRIM(img.image_small) <> \'\')',
+            null,
+            false
+        );
+    }
+
     //filter products
     public function filter_products($query_string_array = null, $category_ids = null, $custom_filters = null, $user_id = null)
     {
@@ -465,6 +478,8 @@ class Product_model extends CI_Model
         } else {
             $this->db->order_by('products.created_at', 'DESC');
         }
+
+        $this->where_storefront_product_has_image();
     }
 
     //search products (AJAX search)
@@ -485,6 +500,7 @@ class Product_model extends CI_Model
             }
             $this->db->or_like('products.sku', clean_slug($search));
             $this->db->group_end();
+            $this->where_storefront_product_has_image();
             $this->db->order_by('products.is_promoted', 'DESC')->limit(10);
             $query = $this->db->get('products');
             return $query->result();
@@ -496,6 +512,7 @@ class Product_model extends CI_Model
     public function get_products()
     {
         $this->build_query();
+        $this->where_storefront_product_has_image();
         $this->db->order_by('products.created_at');
         $query = $this->db->get('products');
         return $query->result();
@@ -516,6 +533,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query();
+        $this->where_storefront_product_has_image();
         $this->db->order_by('products.created_at', 'DESC')->limit(clean_number($limit));
         $result = $this->db->get('products')->result();
 
@@ -528,6 +546,7 @@ class Product_model extends CI_Model
     public function get_promoted_products()
     {
         $this->build_query('promoted');
+        $this->where_storefront_product_has_image();
         $this->db->select("(SELECT COUNT(id) FROM products) AS num_rows");
         $this->db->order_by('products.created_at', 'DESC');
         return $this->db->get('products')->result();
@@ -548,6 +567,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query('promoted');
+        $this->where_storefront_product_has_image();
         $this->db->order_by('products.promote_start_date', 'DESC')->limit(clean_number($per_page), clean_number($offset));
         $result = $this->db->get('products')->result();
 
@@ -571,6 +591,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query('promoted');
+        $this->where_storefront_product_has_image();
         $result = $this->db->count_all_results('products');
 
         $result_cache[$lc_key] = $result;
@@ -611,6 +632,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query();
+        $this->where_storefront_product_has_image();
         $this->db->where('products.is_special_offer', 1);
         $this->db->order_by('products.special_offer_date', 'DESC')->limit(20);
         $result = $this->db->get('products')->result();
@@ -640,6 +662,7 @@ class Product_model extends CI_Model
             foreach ($categories as $category) {
                 if ($category->show_subcategory_products == 1) {
                     $this->build_query();
+                    $this->where_storefront_product_has_image();
                     $this->db->group_start();
                     $this->db->where("products.category_id IN (SELECT id FROM categories WHERE FIND_IN_SET(" . clean_number($category->id) . ", categories.parent_tree))");
                     $this->db->or_where("products.category_id", clean_number($category->id));
@@ -648,6 +671,7 @@ class Product_model extends CI_Model
                     $products_array[$category->id] = $this->db->get('products')->result();
                 } else {
                     $this->build_query();
+                    $this->where_storefront_product_has_image();
                     $this->db->where_in('products.category_id', clean_number($category->id), FALSE);
                     $this->db->order_by('products.created_at', 'DESC')->limit($limit);
                     $products_array[$category->id] = $this->db->get('products')->result();
@@ -712,6 +736,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query();
+        $this->where_storefront_product_has_image();
         $result = $this->db->where('products.category_id', clean_number($category_id))->where('products.id !=', clean_number($product_id))->order_by('rand()')->limit(5)->get('products')->result();
 
         $result_cache[$lc_key] = $result;
@@ -734,6 +759,7 @@ class Product_model extends CI_Model
         }
 
         $this->build_query();
+        $this->where_storefront_product_has_image();
         $this->db->where('users.id', clean_number($user_id));
         $this->db->where('products.id != ', clean_number($product_id));
         $this->db->order_by('products.created_at', 'DESC')->limit(6);
@@ -832,6 +858,7 @@ class Product_model extends CI_Model
     public function get_paginated_user_wishlist_products($user_id, $per_page, $offset)
     {
         $this->build_query('wishlist');
+        $this->where_storefront_product_has_image();
         $this->db->where('wishlist.user_id', clean_number($user_id));
         $this->db->order_by('products.created_at', 'DESC')->limit(clean_number($per_page), clean_number($offset));
         return $this->db->get('products')->result();
@@ -841,6 +868,7 @@ class Product_model extends CI_Model
     public function get_user_wishlist_products_count($user_id)
     {
         $this->build_query('wishlist');
+        $this->where_storefront_product_has_image();
         $this->db->where('wishlist.user_id', clean_number($user_id));
         return $this->db->count_all_results('products');
     }
@@ -851,6 +879,7 @@ class Product_model extends CI_Model
         $wishlist = $this->session->userdata('mds_guest_wishlist');
         if (!empty($wishlist) && item_count($wishlist) > 0) {
             $this->build_query();
+            $this->where_storefront_product_has_image();
             $this->db->where_in('products.id', $wishlist, FALSE);
             $this->db->order_by('products.created_at', 'DESC')->limit(clean_number($per_page), clean_number($offset));
             return $this->db->get('products')->result();
@@ -864,6 +893,7 @@ class Product_model extends CI_Model
         $wishlist = $this->session->userdata('mds_guest_wishlist');
         if (!empty($wishlist) && item_count($wishlist) > 0) {
             $this->build_query();
+            $this->where_storefront_product_has_image();
             $this->db->where_in('products.id', $wishlist, FALSE);
             return $this->db->count_all_results('products');
         }
@@ -922,6 +952,34 @@ class Product_model extends CI_Model
         $this->build_query();
         $this->db->where('products.id', $id);
         return $this->db->get('products')->row();
+    }
+
+    /**
+     * Product available for cart/checkout without default-location filtering (mobile API / Selcom).
+     * Matches active-product rules except geography filters in build_query().
+     */
+    public function get_purchasable_product($id)
+    {
+        $id = clean_number($id);
+        $this->db->select('products.*');
+        $this->db->from('products');
+        if ($this->general_settings->membership_plans_system == 1) {
+            $this->db->join('users', 'products.user_id = users.id AND users.is_membership_plan_expired = 0 AND users.banned = 0');
+        } else {
+            $this->db->join('users', 'products.user_id = users.id AND users.banned = 0');
+        }
+        $this->db->where('products.id', $id);
+        $this->db->where('products.status', 1);
+        $this->db->where('products.visibility', 1);
+        $this->db->where('products.is_deleted', 0);
+        $this->db->where('products.is_draft', 0);
+        if ($this->general_settings->vendor_verification_system == 1) {
+            $this->db->where('users.role !=', 'member');
+        }
+        if ($this->general_settings->show_sold_products != 1) {
+            $this->db->where('products.is_sold', 0);
+        }
+        return $this->db->get()->row();
     }
 
     //get product by slug

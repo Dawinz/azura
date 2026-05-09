@@ -230,7 +230,7 @@ class Order_model extends CI_Model
         }
         if (!empty($cart_items)) {
             foreach ($cart_items as $cart_item) {
-                $product = get_active_product($cart_item->product_id);
+                $product = get_purchasable_product($cart_item->product_id);
                 $variation_option_ids = @serialize($cart_item->options_array);
                 if (!empty($product)) {
                     $shipping_method = "";
@@ -313,7 +313,7 @@ class Order_model extends CI_Model
         $order = $this->get_order($order_id);
         if (!empty($cart_items) && $this->auth_check && !empty($order)) {
             foreach ($cart_items as $cart_item) {
-                $product = get_active_product($cart_item->product_id);
+                $product = get_purchasable_product($cart_item->product_id);
                 if (!empty($product) && $product->product_type == 'digital') {
                     $data_digital = array(
                         'order_id' => $order_id,
@@ -349,7 +349,7 @@ class Order_model extends CI_Model
     {
         $product_id = clean_number($product_id);
         $order_id = clean_number($order_id);
-        $product = get_active_product($product_id);
+        $product = get_purchasable_product($product_id);
         $order = $this->get_order($order_id);
         if (!empty($product) && $product->product_type == 'digital' && !empty($order)) {
             $data_digital = array(

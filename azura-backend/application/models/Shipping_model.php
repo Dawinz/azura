@@ -734,4 +734,111 @@ class Shipping_model extends CI_Model
             $this->db->where('id', clean_number($id))->delete('shipping_zones');
         }
     }
+
+    /**
+     * Mobile/API checkout: auto-select first viable shipping method per seller (same logic as cart UI),
+     * set session keys expected by calculate_cart_total and add_order_products.
+     *
+     * @param array $guest_address Keys: first_name, last_name, email, phone_number, address, country_id, state_id, city, zip_code
+     * @return array success, error?, cart_shipping (stdClass), shipping_snapshot (array for JSON persistence)
+     */
+    public function prepare_guest_shipping_session_for_api($cart_items, $guest_address)
+    {
+        $state_id = isset($guest_address['state_id']) ? (int) $guest_address['state_id'] : 0;
+        if ($state_id < 1) {
+            return array('success' => false, 'error' => 'state_id is required for shipping.');
+        }
+        $st = get_state($state_id);
+        if (empty($st)) {
+            return array('success' => false, 'error' => 'Invalid shipping region (state).');
+        }
+
+        $seller_methods = $this->get_seller_shipping_methods_array($cart_items, $state_id, true);
+        if (empty($seller_methods)) {
+            return array('success' => false, 'error' => 'No shipping options for this address. Try another region or contact support.');
+        }
+
+        $seller_costs = array();
+        $method_ids = array();
+        $total_shipping = 0;
+
+        foreach ($seller_methods as $shop_block) {
+            if (empty($shop_block->methods)) {
+                $name = !empty($shop_block->shop_name) ? $shop_block->shop_name : ('Seller #' . (int) $shop_block->shop_id);
+                return array('success' => false, 'error' => 'No delivery method for: ' . $name);
+            }
+            $picked = null;
+            foreach ($shop_block->methods as $method) {
+                if (!empty($method->is_selected)) {
+                    $picked = $method;
+                    break;
+                }
+            }
+            if ($picked === null) {
+                $picked = $shop_block->methods[0];
+            }
+
+            $cost = 0;
+            if ($picked->method_type == 'free_shipping' && !empty($picked->is_free_shipping)) {
+                $cost = 0;
+            } elseif (isset($picked->cost) && $picked->cost !== null && $picked->cost !== '') {
+                $cost = (float) $picked->cost;
+            }
+
+            $total_shipping += $cost;
+            $o = new stdClass();
+            $o->shipping_method_id = $picked->id;
+            $o->cost = $cost;
+            $seller_costs[(int) $shop_block->shop_id] = $o;
+            $method_ids[] = (int) $picked->id;
+        }
+
+        $this->session->set_userdata('mds_seller_shipping_costs', $seller_costs);
+        $this->session->set_userdata('mds_selected_shipping_method_ids', $method_ids);
+
+        $guest_ship = array(
+            'first_name' => isset($guest_address['first_name']) ? trim((string) $guest_address['first_name']) : '',
+            'last_name' => isset($guest_address['last_name']) ? trim((string) $guest_address['last_name']) : '',
+            'email' => isset($guest_address['email']) ? trim((string) $guest_address['email']) : '',
+            'phone_number' => isset($guest_address['phone_number']) ? trim((string) $guest_address['phone_number']) : '',
+            'address' => isset($guest_address['address']) ? trim((string) $guest_address['address']) : '',
+            'country_id' => isset($guest_address['country_id']) ? (int) $guest_address['country_id'] : 0,
+            'state_id' => $state_id,
+            'city' => isset($guest_address['city']) ? trim((string) $guest_address['city']) : '',
+            'zip_code' => isset($guest_address['zip_code']) ? trim((string) $guest_address['zip_code']) : '',
+        );
+
+        $cart_shipping = new stdClass();
+        $cart_shipping->total_cost = $total_shipping;
+        $cart_shipping->is_guest = true;
+        $cart_shipping->user_id = 0;
+        $cart_shipping->guest_shipping_address = $guest_ship;
+        $cart_shipping->guest_billing_address = $guest_ship;
+
+        $this->session->set_userdata('mds_cart_shipping', $cart_shipping);
+
+        $shipping_snapshot = array(
+            'cart_shipping' => array(
+                'total_cost' => $total_shipping,
+                'is_guest' => true,
+                'user_id' => 0,
+                'guest_shipping_address' => $guest_ship,
+                'guest_billing_address' => $guest_ship,
+            ),
+            'mds_seller_shipping_costs' => array(),
+            'mds_selected_shipping_method_ids' => $method_ids,
+        );
+        foreach ($seller_costs as $sid => $obj) {
+            $shipping_snapshot['mds_seller_shipping_costs'][(string) $sid] = array(
+                'shipping_method_id' => $obj->shipping_method_id,
+                'cost' => $obj->cost,
+            );
+        }
+
+        return array(
+            'success' => true,
+            'cart_shipping' => $cart_shipping,
+            'shipping_snapshot' => $shipping_snapshot,
+        );
+    }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shop/core/market_format.dart';
 
 import '../../../../constants.dart';
 import 'product_availability_tag.dart';
@@ -48,7 +49,7 @@ class ProductInfo extends StatelessWidget {
             const SizedBox(height: defaultPadding),
             if (price != null) ...[
               Text(
-                "$currency $price",
+                MarketFormat.formatAmount(price!),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: defaultPadding),

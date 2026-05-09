@@ -247,6 +247,7 @@ trait Flutter_v1_trait {
         $this->db->where('p.is_deleted', 0);
         $this->db->where('p.is_draft', 0);
         $this->db->where('p.product_type', 'physical');
+        $this->db->where('EXISTS (SELECT 1 FROM images img WHERE img.product_id = p.id AND img.image_small IS NOT NULL AND img.image_small != \'\')', null, false);
         $total = $this->db->count_all_results();
 
         $this->db->select('p.id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at, p.product_type');
@@ -259,6 +260,7 @@ trait Flutter_v1_trait {
         $this->db->where('p.is_deleted', 0);
         $this->db->where('p.is_draft', 0);
         $this->db->where('p.product_type', 'physical');
+        $this->db->where('EXISTS (SELECT 1 FROM images img WHERE img.product_id = p.id AND img.image_small IS NOT NULL AND img.image_small != \'\')', null, false);
         $this->db->order_by('p.created_at', 'DESC');
         $this->db->limit($per_page, ($page - 1) * $per_page);
         $query = $this->db->get();
@@ -267,6 +269,11 @@ trait Flutter_v1_trait {
         $list = array();
         foreach ($query->result() as $row) {
             $img = isset($row->image) ? $row->image : null;
+            $image_url = null;
+            if (!empty($img)) {
+                $img = trim((string) $img);
+                $image_url = preg_match('#^https?://#i', $img) ? $img : $base_url . $img;
+            }
             $list[] = array(
                 'id' => (int) $row->id,
                 'title' => $row->title ?: '',
@@ -279,7 +286,7 @@ trait Flutter_v1_trait {
                 'is_promoted' => (int) $row->is_promoted,
                 'is_sold' => (int) $row->is_sold,
                 'product_type' => isset($row->product_type) ? (string) $row->product_type : 'physical',
-                'image' => $img ? $base_url . $img : null,
+                'image' => $image_url,
                 'created_at' => $row->created_at,
             );
         }

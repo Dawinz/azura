@@ -41,6 +41,17 @@ class CartProvider with ChangeNotifier {
     return true;
   }
 
+  /// Clears the cart and adds a single line (used for Buy now → checkout).
+  bool replaceCartWith(ProductModel product, {int quantity = 1}) {
+    if (!product.isPurchasableInApp) return false;
+    final q = quantity < 1 ? 1 : quantity;
+    _lines
+      ..clear()
+      ..add(CartLine(product: product, quantity: q));
+    notifyListeners();
+    return true;
+  }
+
   void incrementQuantity(int lineIndex) {
     if (lineIndex < 0 || lineIndex >= _lines.length) return;
     _lines[lineIndex].quantity += 1;

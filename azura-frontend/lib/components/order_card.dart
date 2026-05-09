@@ -61,8 +61,11 @@ class OrderCard extends StatelessWidget {
                 style: const TextStyle(color: textColor),
                 children: [
                   TextSpan(
-                    text: order.items.isNotEmpty ? order.items[0].product.title : '',
-                    style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
+                    text: order.items.isNotEmpty
+                        ? order.items[0].product.title
+                        : '',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, color: Colors.black87),
                   )
                 ],
               ),
@@ -75,8 +78,11 @@ class OrderCard extends StatelessWidget {
                   style: const TextStyle(color: textColor),
                   children: [
                     TextSpan(
-                      text: order.items.isNotEmpty ? order.items[0].quantity.toString() : "",
-                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
+                      text: order.items.isNotEmpty
+                          ? order.items[0].quantity.toString()
+                          : "",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500, color: Colors.black87),
                     )
                   ],
                 ),
@@ -89,7 +95,8 @@ class OrderCard extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: order.date,
-                    style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, color: Colors.black87),
                   )
                 ],
               ),
@@ -103,7 +110,8 @@ class OrderCard extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: order.status,
-                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500, color: Colors.black87),
                     )
                   ],
                 ),

@@ -30,13 +30,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text("Failed to load profile: ${snapshot.error}"));
+            return Center(
+                child: Text("Failed to load profile: ${snapshot.error}"));
           }
           final data = snapshot.data;
-          final Map<String, dynamic> user = (data is Map<String, dynamic>)
-              ? data
-              : <String, dynamic>{};
-          final String name = (user['name'] ?? user['username'] ?? '').toString();
+          final Map<String, dynamic> user =
+              (data is Map<String, dynamic>) ? data : <String, dynamic>{};
+          final String name =
+              (user['name'] ?? user['username'] ?? '').toString();
           final String email = (user['email'] ?? '').toString();
           return Padding(
             padding: const EdgeInsets.all(16.0),

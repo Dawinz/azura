@@ -101,7 +101,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         content: Text(
           ok
               ? 'Added to cart'
-              : 'This item is not available for purchase in the app. Use azuramall.shop in a browser.',
+              : 'Digital items are not sold in this app. Choose a physical product.',
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -123,12 +123,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       navigator.pushNamed(logInScreenRoute);
       return;
     }
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Checkout flow opens here'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final cart = context.read<CartProvider>();
+    final ok = cart.replaceCartWith(_display, quantity: 1);
+    if (!context.mounted) return;
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Digital items are not sold in this app. Choose a physical product.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    navigator.pushNamed(checkoutScreenRoute);
   }
 
   @override

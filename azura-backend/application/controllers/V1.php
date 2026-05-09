@@ -433,13 +433,36 @@ class V1 extends CI_Controller {
             $base_url = $this->config->item('base_url');
             $list = array();
             foreach ($rows as $row) {
+                $img = isset($row->image) ? trim((string) $row->image) : '';
+                $image_out = null;
+                if ($img !== '') {
+                    $image_out = preg_match('#^https?://#i', $img) ? $img : $base_url . $img;
+                }
+                if ($image_out === null || $image_out === '') {
+                    $this->db->reset_query();
+                    $this->db->select('img.image_small');
+                    $this->db->from('images img');
+                    $this->db->join('products p', 'p.id = img.product_id');
+                    $this->db->where('p.category_id', (int) $row->id);
+                    $this->db->where('p.status', 1);
+                    $this->db->where('p.visibility', 1);
+                    $this->db->where('p.is_deleted', 0);
+                    $this->db->where('p.product_type', 'physical');
+                    $this->db->order_by('img.is_main', 'DESC');
+                    $this->db->limit(1);
+                    $ir = $this->db->get()->row();
+                    if (!empty($ir) && !empty($ir->image_small)) {
+                        $p = trim((string) $ir->image_small);
+                        $image_out = preg_match('#^https?://#i', $p) ? $p : $base_url . $p;
+                    }
+                }
                 $list[] = array(
                     'id' => (int) $row->id,
                     'name' => $row->name ?: '',
                     'slug' => $row->slug ?: '',
                     'parent_id' => (int) $row->parent_id,
                     'category_order' => (int) $row->category_order,
-                    'image' => $row->image ? $base_url . $row->image : null,
+                    'image' => $image_out,
                 );
             }
             $this->output->set_output(json_encode(array('success' => true, 'data' => $list)));
@@ -470,6 +493,7 @@ class V1 extends CI_Controller {
             $this->db->where('p.is_deleted', 0);
             $this->db->where('p.is_draft', 0);
             $this->db->where('p.product_type', 'physical');
+            $this->db->where('EXISTS (SELECT 1 FROM images img WHERE img.product_id = p.id AND img.image_small IS NOT NULL AND img.image_small != \'\')', null, false);
             if ($category_id > 0) {
                 $this->db->where('p.category_id', $category_id);
             }
@@ -484,6 +508,7 @@ class V1 extends CI_Controller {
             $this->db->where('p.is_deleted', 0);
             $this->db->where('p.is_draft', 0);
             $this->db->where('p.product_type', 'physical');
+            $this->db->where('EXISTS (SELECT 1 FROM images img WHERE img.product_id = p.id AND img.image_small IS NOT NULL AND img.image_small != \'\')', null, false);
             if ($category_id > 0) {
                 $this->db->where('p.category_id', $category_id);
             }
@@ -495,6 +520,15 @@ class V1 extends CI_Controller {
             $list = array();
             foreach ($query->result() as $row) {
                 $img = isset($row->image) ? $row->image : null;
+                $image_url = null;
+                if (!empty($img)) {
+                    $img = trim((string) $img);
+                    if (preg_match('#^https?://#i', $img)) {
+                        $image_url = $img;
+                    } else {
+                        $image_url = $base_url . $img;
+                    }
+                }
                 $list[] = array(
                     'id' => (int) $row->id,
                     'category_id' => isset($row->category_id) ? (int) $row->category_id : 0,
@@ -508,7 +542,7 @@ class V1 extends CI_Controller {
                     'is_promoted' => (int) $row->is_promoted,
                     'is_sold' => (int) $row->is_sold,
                     'product_type' => isset($row->product_type) ? (string) $row->product_type : 'physical',
-                    'image' => $img ? $base_url . $img : null,
+                    'image' => $image_url,
                     'created_at' => $row->created_at,
                 );
             }
@@ -685,6 +719,61 @@ class V1 extends CI_Controller {
             log_message('error', 'V1 user_delete_account: ' . $e->getMessage());
             $this->output->set_status_header(500);
             $this->output->set_output(json_encode(array('success' => false, 'error' => 'Server error')));
+        }
+    }
+
+    /**
+     * GET /v1/location/countries — active countries for shipping dropdowns.
+     */
+    public function location_countries() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        try {
+            $this->load->model('location_model');
+            $rows = $this->location_model->get_active_countries();
+            $out = array();
+            foreach ($rows as $r) {
+                $out[] = array(
+                    'id' => (int) $r->id,
+                    'name' => $r->name ?: '',
+                );
+            }
+            $this->output->set_output(json_encode(array('success' => true, 'data' => $out)));
+        } catch (Throwable $e) {
+            log_message('error', 'V1 location_countries: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Failed to load countries')));
+        }
+    }
+
+    /**
+     * GET /v1/location/states?country_id=1
+     */
+    public function location_states() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $country_id = (int) $this->input->get('country_id');
+        if ($country_id < 1) {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'country_id required')));
+            return;
+        }
+        try {
+            $this->load->model('location_model');
+            $rows = $this->location_model->get_states_by_country($country_id);
+            $out = array();
+            foreach ($rows as $r) {
+                $out[] = array(
+                    'id' => (int) $r->id,
+                    'name' => $r->name ?: '',
+                    'country_id' => (int) $r->country_id,
+                );
+            }
+            $this->output->set_output(json_encode(array('success' => true, 'data' => $out)));
+        } catch (Throwable $e) {
+            log_message('error', 'V1 location_states: ' . $e->getMessage());
+            $this->output->set_status_header(500);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Failed to load states')));
         }
     }
 

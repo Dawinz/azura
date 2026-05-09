@@ -8,7 +8,7 @@ import 'package:shop/route/route_constants.dart';
 import 'package:shop/services/storage_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Order review and Selcom hosted checkout (opens system browser / WebView).
+/// Order review, shipping address (when required), and Selcom hosted checkout.
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -25,7 +25,96 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     'apigw.selcommobile.com',
   };
 
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _phone = TextEditingController();
+  final _address = TextEditingController();
+  final _city = TextEditingController();
+  final _zip = TextEditingController();
+
   bool _busy = false;
+  List<Map<String, dynamic>> _countries = [];
+  List<Map<String, dynamic>> _states = [];
+  int? _countryId;
+  int? _stateId;
+  bool _loadingLocations = true;
+  String? _locationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCountries();
+  }
+
+  @override
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _phone.dispose();
+    _address.dispose();
+    _city.dispose();
+    _zip.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCountries() async {
+    setState(() {
+      _loadingLocations = true;
+      _locationError = null;
+    });
+    try {
+      final list = await ApiService.getLocationCountries();
+      if (!mounted) return;
+      int? tanzania;
+      for (final c in list) {
+        final name = c['name']?.toString().toLowerCase() ?? '';
+        if (name.contains('tanzania')) {
+          tanzania = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
+          break;
+        }
+      }
+      setState(() {
+        _countries = list;
+        _countryId = tanzania ??
+            (list.isNotEmpty
+                ? (list.first['id'] is int
+                    ? list.first['id'] as int
+                    : int.tryParse('${list.first['id']}'))
+                : null);
+        _loadingLocations = false;
+      });
+      if (_countryId != null) {
+        await _loadStates(_countryId!);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocations = false;
+        _locationError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadStates(int countryId) async {
+    try {
+      final list = await ApiService.getLocationStates(countryId);
+      if (!mounted) return;
+      setState(() {
+        _states = list;
+        _stateId = list.isNotEmpty
+            ? (list.first['id'] is int
+                ? list.first['id'] as int
+                : int.tryParse('${list.first['id']}'))
+            : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _states = [];
+        _stateId = null;
+      });
+    }
+  }
 
   bool _isTrustedPaymentUrl(Uri uri) {
     final host = uri.host.toLowerCase();
@@ -39,6 +128,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return MarketFormat.formatAmount(
       cart.lines.isEmpty ? 0 : cart.cartTotal,
     );
+  }
+
+  bool _shippingFieldsOk() {
+    if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty) {
+      return false;
+    }
+    if (_phone.text.trim().isEmpty ||
+        _address.text.trim().isEmpty ||
+        _city.text.trim().isEmpty) {
+      return false;
+    }
+    if (_countryId == null || _stateId == null) {
+      return false;
+    }
+    return true;
+  }
+
+  Map<String, dynamic>? _shippingPayload(String buyerEmail) {
+    if (!_shippingFieldsOk()) return null;
+    return {
+      'first_name': _firstName.text.trim(),
+      'last_name': _lastName.text.trim(),
+      'email': buyerEmail,
+      'phone_number': _phone.text.trim(),
+      'address': _address.text.trim(),
+      'country_id': _countryId,
+      'state_id': _stateId,
+      'city': _city.text.trim(),
+      'zip_code': _zip.text.trim(),
+    };
   }
 
   Future<void> _completePurchase(BuildContext context, CartProvider cart) async {
@@ -66,7 +185,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (lines.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Cart items are missing product IDs. Try reopening the product from the shop.'),
+          content: Text(
+            'Cart items are missing product IDs. Try reopening the product from the shop.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -87,13 +208,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
 
+    final shipping = _shippingPayload(user.email);
+    if (shipping == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please complete shipping: name, phone, address, country and region.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final result = await ApiService.initSelcomCheckout(
         lines: lines,
-        buyerName: user.name,
+        buyerName:
+            '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim().isEmpty
+                ? user.name
+                : '${_firstName.text.trim()} ${_lastName.text.trim()}',
         buyerEmail: user.email,
+        buyerPhone: _phone.text.trim().isNotEmpty ? _phone.text.trim() : null,
         bearerToken: user.token,
+        shippingAddress: shipping,
       );
       if (!mounted) return;
       final uri = Uri.parse(result.paymentGatewayUrl);
@@ -111,7 +250,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!ok) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Could not open the payment page. Try again or use azuramall.shop in a browser.'),
+            content: Text(
+              'Could not open the payment page. Please try again.',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -119,7 +260,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         messenger.showSnackBar(
           const SnackBar(
             content: Text(
-              'Complete payment in the browser. When finished, you can return to the app — your order will appear on azuramall.shop.',
+              'Complete payment in the secure browser window. When finished, return here — your order will sync automatically.',
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -174,6 +315,164 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             padding: const EdgeInsets.all(defaultPadding),
             children: [
               Text(
+                'Delivery',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_locationError != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    _locationError!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              if (_loadingLocations)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: LinearProgressIndicator(),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _firstName,
+                      decoration: const InputDecoration(
+                        labelText: 'First name',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _lastName,
+                      decoration: const InputDecoration(
+                        labelText: 'Last name',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _address,
+                decoration: const InputDecoration(
+                  labelText: 'Street address',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _city,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _zip,
+                      decoration: const InputDecoration(
+                        labelText: 'Postal / ZIP',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Country',
+                  border: OutlineInputBorder(),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: _countryId,
+                    hint: const Text('Select country'),
+                    items: _countries
+                        .map((c) {
+                          final raw = c['id'];
+                          final id = raw is int
+                              ? raw
+                              : int.tryParse('${raw ?? ''}');
+                          if (id == null || id < 1) return null;
+                          return DropdownMenuItem<int>(
+                            value: id,
+                            child: Text(c['name']?.toString() ?? ''),
+                          );
+                        })
+                        .whereType<DropdownMenuItem<int>>()
+                        .toList(),
+                    onChanged: _loadingLocations
+                        ? null
+                        : (v) async {
+                            if (v == null) return;
+                            setState(() {
+                              _countryId = v;
+                              _stateId = null;
+                              _states = [];
+                            });
+                            await _loadStates(v);
+                          },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Region / state',
+                  border: OutlineInputBorder(),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: _stateId,
+                    hint: const Text('Select region'),
+                    items: _states
+                        .map((s) {
+                          final raw = s['id'];
+                          final id = raw is int
+                              ? raw
+                              : int.tryParse('${raw ?? ''}');
+                          if (id == null || id < 1) return null;
+                          return DropdownMenuItem<int>(
+                            value: id,
+                            child: Text(s['name']?.toString() ?? ''),
+                          );
+                        })
+                        .whereType<DropdownMenuItem<int>>()
+                        .toList(),
+                    onChanged: _states.isEmpty
+                        ? null
+                        : (v) => setState(() => _stateId = v),
+                  ),
+                ),
+              ),
+              const SizedBox(height: defaultPadding * 2),
+              Text(
                 'Order summary',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -208,7 +507,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total',
+                    'Subtotal',
                     style: theme.textTheme.titleMedium,
                   ),
                   Text(
@@ -219,9 +518,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Shipping is calculated on pay — total shown by Selcom includes delivery when your sellers ship to the selected region.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: defaultPadding * 2),
               Text(
-                'Pay securely with Selcom. You may need to sign in on azuramall.shop after payment to view the order.',
+                'Pay securely with Selcom in your browser.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

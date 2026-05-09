@@ -2532,7 +2532,8 @@ INSERT INTO `routes` (`id`, `route_key`, `route`) VALUES
 (65, 'sold_products', 'sold-products'),
 (66, 'shipping_settings', 'shipping-settings'),
 (67, 'add_shipping_zone', 'add-shipping-zone'),
-(68, 'edit_shipping_zone', 'edit-shipping-zone');
+(68, 'edit_shipping_zone', 'edit-shipping-zone'),
+(69, 'privacy_policy', 'privacy-policy');
 
 -- --------------------------------------------------------
 

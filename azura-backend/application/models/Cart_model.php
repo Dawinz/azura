@@ -254,7 +254,7 @@ class Cart_model extends CI_Model
         }
         if (!empty($cart)) {
             foreach ($cart as $cart_item) {
-                $product = $this->product_model->get_active_product($cart_item->product_id);
+                $product = $this->product_model->get_purchasable_product($cart_item->product_id);
                 if (!empty($product)) {
                     //if purchase type is bidding
                     if ($cart_item->purchase_type == 'bidding') {
@@ -514,7 +514,7 @@ class Cart_model extends CI_Model
             $cart = $this->session->userdata('mds_shopping_cart');
         }
         foreach ($cart as $cart_item) {
-            $product = $this->product_model->get_active_product($cart_item->product_id);
+            $product = $this->product_model->get_purchasable_product($cart_item->product_id);
             if (!empty($product)) {
                 //if purchase type is bidding
                 if ($cart_item->purchase_type == 'bidding') {
@@ -643,15 +643,23 @@ class Cart_model extends CI_Model
 
     /**
      * Build priced cart from simple API lines [{product_id, quantity}] for Selcom / mobile checkout.
-     * Rejects physical+shipping marketplace carts and products with visible variations (use website).
+     * When marketplace shipping is enabled, pass $shipping_address (guest fields + state_id) to calculate delivery.
      *
-     * @return array With keys error, or cart_final, cart_total, payment_amount
+     * @param array|null $shipping_address guest keys: first_name, last_name, email, phone_number, address, country_id, state_id, city, zip_code
+     * @return array With keys error, or cart_final, cart_total, payment_amount, shipping_snapshot (array|null)
      */
-    public function prepare_checkout_from_api_lines($lines)
+    public function prepare_checkout_from_api_lines($lines, $shipping_address = null)
     {
         if (!is_array($lines) || empty($lines)) {
             return array('error' => 'lines required');
         }
+
+        $this->session->unset_userdata('mds_cart_shipping');
+        $this->session->unset_userdata('mds_seller_shipping_costs');
+        $this->session->unset_userdata('mds_selected_shipping_method_ids');
+        $this->session->unset_userdata('mds_array_shipping_cost');
+        $this->session->unset_userdata('mds_array_cart_seller_ids');
+
         $this->load->model('variation_model');
         $raw = array();
         foreach ($lines as $line) {
@@ -663,15 +671,12 @@ class Cart_model extends CI_Model
             if ($pid < 1 || $qty < 1) {
                 return array('error' => 'Each line needs product_id and quantity');
             }
-            $product = $this->product_model->get_active_product($pid);
+            $product = $this->product_model->get_purchasable_product($pid);
             if (empty($product) || (int) $product->status !== 1) {
                 return array('error' => 'Product not available');
             }
             if ($product->product_type === 'digital') {
                 return array('error' => 'Digital products cannot be purchased in the app. Please use azuramall.shop in your browser.');
-            }
-            if ($product->product_type === 'physical' && (int) $this->product_settings->marketplace_shipping === 1) {
-                return array('error' => 'Physical items with shipping must be purchased on the website.');
             }
             $vars = $this->variation_model->get_product_variations($pid);
             if (!empty($vars)) {
@@ -705,10 +710,28 @@ class Cart_model extends CI_Model
             $this->session->unset_userdata('mds_shopping_cart');
             return array('error' => 'Could not build cart');
         }
+
+        $shipping_snapshot = null;
+        $needs_physical_ship = ((int) $this->product_settings->marketplace_shipping === 1) && $this->check_cart_has_physical_product();
+
+        if ($needs_physical_ship) {
+            if (!is_array($shipping_address)) {
+                return array('error' => 'shipping_address is required for delivery (include state_id, address, and contact details).');
+            }
+            $this->load->model('shipping_model');
+            $ship_res = $this->shipping_model->prepare_guest_shipping_session_for_api($enriched, $shipping_address);
+            if (empty($ship_res['success'])) {
+                $this->session->unset_userdata('mds_shopping_cart');
+                return array('error' => !empty($ship_res['error']) ? $ship_res['error'] : 'Shipping could not be calculated.');
+            }
+            $shipping_snapshot = $ship_res['shipping_snapshot'];
+        }
+
         $cart_total = $this->calculate_cart_total($enriched, null, false);
         if (empty($cart_total) || (float) $cart_total->total <= 0 || (int) $cart_total->is_stock_available !== 1) {
             $this->session->unset_userdata('mds_shopping_cart');
             $this->session->unset_userdata('mds_shopping_cart_total');
+            $this->session->unset_userdata('mds_cart_shipping');
             return array('error' => 'Cart is invalid or out of stock');
         }
 
@@ -719,11 +742,15 @@ class Cart_model extends CI_Model
         $this->session->unset_userdata('mds_cart_payment_method');
         $this->session->unset_userdata('mds_shopping_cart');
         $this->session->unset_userdata('mds_shopping_cart_total');
+        $this->session->unset_userdata('mds_cart_shipping');
+        $this->session->unset_userdata('mds_seller_shipping_costs');
+        $this->session->unset_userdata('mds_selected_shipping_method_ids');
 
         return array(
             'cart_final' => $enriched,
             'cart_total' => $cart_total,
             'payment_amount' => $converted,
+            'shipping_snapshot' => $shipping_snapshot,
         );
     }
 }

@@ -41,7 +41,8 @@ class Categories extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool useApiCategories = categories != null && categories!.isNotEmpty;
-    final int itemCount = useApiCategories ? categories!.length : demoCategories.length;
+    final int itemCount =
+        useApiCategories ? categories!.length : demoCategories.length;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -51,8 +52,7 @@ class Categories extends StatelessWidget {
             (index) => Padding(
               padding: EdgeInsets.only(
                   left: index == 0 ? defaultPadding : defaultPadding / 2,
-                  right:
-                      index == itemCount - 1 ? defaultPadding : 0),
+                  right: index == itemCount - 1 ? defaultPadding : 0),
               child: CategoryBtn(
                 category: useApiCategories
                     ? categories![index].title

@@ -88,6 +88,21 @@ class Home_controller extends Home_Core_Controller
     }
 
     /**
+     * Privacy Policy — https://azuramall.shop/privacy-policy
+     * Standalone legal page (not dependent on empty CMS placeholders).
+     */
+    public function privacy_policy()
+    {
+        get_method();
+        $data['title'] = 'Privacy Policy';
+        $data['description'] = 'Privacy Policy for Azura Mall — how we collect, use, and protect your personal information.';
+        $data['keywords'] = 'privacy,personal data,Azura Mall,marketplace,' . $this->app_name;
+        $this->load->view('partials/_header', $data);
+        $this->load->view('privacy_policy', $data);
+        $this->load->view('partials/_footer');
+    }
+
+    /**
      * Contact Page Post
      */
     public function contact_post()
