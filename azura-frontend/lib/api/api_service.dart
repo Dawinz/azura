@@ -428,6 +428,14 @@ class ApiService {
           final decoded = json.decode(response.body);
           final rows = _categoryListRows(decoded);
           return rows
+              .where((e) {
+                if (e is! Map) return false;
+                final m = Map<String, dynamic>.from(e);
+                return !_discoverCategoryHidden(
+                  m['slug']?.toString() ?? '',
+                  m['name']?.toString() ?? m['title']?.toString() ?? '',
+                );
+              })
               .map((e) => CategoryModel.fromMap(
                     Map<String, dynamic>.from(e as Map),
                   ))
@@ -441,6 +449,18 @@ class ApiService {
     } catch (e) {
       return [];
     }
+  }
+
+  /// Hide Shoes, Abaya, Shirts, Khanzu/Kanzu from Discover (matches backend V1 filter).
+  static bool _discoverCategoryHidden(String slug, String title) {
+    final s = slug.toLowerCase().trim();
+    final t = title.toLowerCase().trim();
+    final slugHide = RegExp(r'(^|-)(shoes|abaya|shirts|khanzu|kanzu)(-|$)');
+    final titleHide =
+        RegExp(r'^(shoes|abaya|shirts|khanzu|kanzu)(\s|[-_./,]|$)', caseSensitive: false);
+    if (s.isNotEmpty && slugHide.hasMatch(s)) return true;
+    if (t.isNotEmpty && titleHide.hasMatch(t)) return true;
+    return false;
   }
 
   static Future<List<ProductModel>> getProductsByCategory(

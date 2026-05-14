@@ -97,6 +97,22 @@ class V1 extends CI_Controller {
     }
 
     /**
+     * Categories removed from mobile Discover / v1/category/list (slug or display name).
+     */
+    private function _v1_category_is_hidden($slug, $name) {
+        $slug = strtolower(trim((string) $slug));
+        $name = strtolower(trim((string) $name));
+        $pat = '(shoes|abaya|shirts|khanzu|kanzu)';
+        if ($slug !== '' && preg_match('/(^|-)' . $pat . '(-|$)/', $slug)) {
+            return true;
+        }
+        if ($name !== '' && preg_match('/^' . $pat . '(\s|[-_.\/,]|$)/u', $name)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * POST /v1/user/register
      * Register a new user. Expects JSON: {username, email, password, phone_number}
      */
@@ -434,6 +450,9 @@ class V1 extends CI_Controller {
             $base_url = $this->config->item('base_url');
             $list = array();
             foreach ($rows as $row) {
+                if ($this->_v1_category_is_hidden((string) $row->slug, (string) ($row->name ?: ''))) {
+                    continue;
+                }
                 $img = isset($row->image) ? trim((string) $row->image) : '';
                 $image_out = null;
                 if ($img !== '') {
