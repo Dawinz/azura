@@ -101,11 +101,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
       setState(() {
         _states = list;
-        _stateId = list.isNotEmpty
-            ? (list.first['id'] is int
-                ? list.first['id'] as int
-                : int.tryParse('${list.first['id']}'))
-            : null;
+        _stateId = list.isNotEmpty ? _parseLocationIdInst(list.first['id']) : null;
       });
     } catch (_) {
       if (!mounted) return;
@@ -113,6 +109,163 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _states = [];
         _stateId = null;
       });
+    }
+  }
+
+  int? _parseLocationIdInst(dynamic raw) {
+    if (raw is int) return raw >= 1 ? raw : null;
+    final v = int.tryParse('${raw ?? ''}');
+    return v != null && v >= 1 ? v : null;
+  }
+
+  String _countryLabel() {
+    if (_countryId == null) return '';
+    for (final c in _countries) {
+      if (_parseLocationIdInst(c['id']) == _countryId) {
+        return c['name']?.toString() ?? '';
+      }
+    }
+    return '';
+  }
+
+  String _regionLabel() {
+    if (_stateId == null) return '';
+    for (final s in _states) {
+      if (_parseLocationIdInst(s['id']) == _stateId) {
+        return s['name']?.toString() ?? '';
+      }
+    }
+    return '';
+  }
+
+  Future<void> _openCountryPicker() async {
+    FocusScope.of(context).unfocus();
+    if (_loadingLocations) return;
+    if (_countries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Countries could not be loaded. Pull to retry or check your connection.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final theme = Theme.of(context);
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final h = MediaQuery.sizeOf(ctx).height * 0.55;
+        return SafeArea(
+          child: SizedBox(
+            height: h,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Text(
+                    'Select country',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _countries.length,
+                    itemBuilder: (context, index) {
+                      final c = _countries[index];
+                      final id = _parseLocationIdInst(c['id']);
+                      if (id == null) return const SizedBox.shrink();
+                      final name = c['name']?.toString() ?? '';
+                      return ListTile(
+                        title: Text(name),
+                        selected: id == _countryId,
+                        onTap: () => Navigator.of(ctx).pop(id),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _countryId = picked;
+        _stateId = null;
+        _states = [];
+      });
+      await _loadStates(picked);
+    }
+  }
+
+  Future<void> _openRegionPicker() async {
+    FocusScope.of(context).unfocus();
+    if (_loadingLocations) return;
+    if (_states.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _countries.isEmpty
+                ? 'Load countries first.'
+                : 'No regions for this country. Choose a different country.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final theme = Theme.of(context);
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final h = MediaQuery.sizeOf(ctx).height * 0.55;
+        return SafeArea(
+          child: SizedBox(
+            height: h,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Text(
+                    'Select region',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _states.length,
+                    itemBuilder: (context, index) {
+                      final s = _states[index];
+                      final id = _parseLocationIdInst(s['id']);
+                      if (id == null) return const SizedBox.shrink();
+                      final name = s['name']?.toString() ?? '';
+                      return ListTile(
+                        title: Text(name),
+                        selected: id == _stateId,
+                        onTap: () => Navigator.of(ctx).pop(id),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _stateId = picked);
     }
   }
 
@@ -402,72 +555,76 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Country',
-                  border: OutlineInputBorder(),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    isExpanded: true,
-                    value: _countryId,
-                    hint: const Text('Select country'),
-                    items: _countries
-                        .map((c) {
-                          final raw = c['id'];
-                          final id = raw is int
-                              ? raw
-                              : int.tryParse('${raw ?? ''}');
-                          if (id == null || id < 1) return null;
-                          return DropdownMenuItem<int>(
-                            value: id,
-                            child: Text(c['name']?.toString() ?? ''),
-                          );
-                        })
-                        .whereType<DropdownMenuItem<int>>()
-                        .toList(),
-                    onChanged: _loadingLocations
-                        ? null
-                        : (v) async {
-                            if (v == null) return;
-                            setState(() {
-                              _countryId = v;
-                              _stateId = null;
-                              _states = [];
-                            });
-                            await _loadStates(v);
-                          },
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openCountryPicker,
+                  borderRadius: BorderRadius.circular(4),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Country',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: Icon(
+                        Icons.arrow_drop_down,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          _loadingLocations
+                              ? 'Loading…'
+                              : (_countryLabel().isEmpty
+                                  ? 'Tap to select'
+                                  : _countryLabel()),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: _countryLabel().isEmpty && !_loadingLocations
+                                ? theme.hintColor
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Region / state',
-                  border: OutlineInputBorder(),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    isExpanded: true,
-                    value: _stateId,
-                    hint: const Text('Select region'),
-                    items: _states
-                        .map((s) {
-                          final raw = s['id'];
-                          final id = raw is int
-                              ? raw
-                              : int.tryParse('${raw ?? ''}');
-                          if (id == null || id < 1) return null;
-                          return DropdownMenuItem<int>(
-                            value: id,
-                            child: Text(s['name']?.toString() ?? ''),
-                          );
-                        })
-                        .whereType<DropdownMenuItem<int>>()
-                        .toList(),
-                    onChanged: _states.isEmpty
-                        ? null
-                        : (v) => setState(() => _stateId = v),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openRegionPicker,
+                  borderRadius: BorderRadius.circular(4),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Region / state',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: Icon(
+                        Icons.arrow_drop_down,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          _loadingLocations
+                              ? 'Loading…'
+                              : (_states.isEmpty
+                                  ? 'Select country first'
+                                  : (_regionLabel().isEmpty
+                                      ? 'Tap to select'
+                                      : _regionLabel())),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: _regionLabel().isEmpty && _states.isNotEmpty
+                                ? theme.hintColor
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

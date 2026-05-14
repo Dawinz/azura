@@ -20,7 +20,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _catalog = ApiService.getProducts();
+    _catalog = ApiService.getBrowseCatalog();
   }
 
   @override

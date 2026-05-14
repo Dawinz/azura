@@ -3,12 +3,15 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shop/models/product_model.dart';
 
-/// Persists the product catalog so tabs like Bookmark do not refetch on every cold start.
+/// Persists the product catalog so cold starts and short navigation loops avoid redundant HTTP.
+///
+/// [ApiService.getBrowseCatalog] also keeps an in-memory copy with a short TTL so
+/// `FutureBuilder` rebuilds and tab switches do not trigger new requests every few seconds.
 class CatalogCacheService {
   static const _jsonKey = 'catalog_products_json_v1';
   static const _atMsKey = 'catalog_products_cached_at_ms';
 
-  /// Consider cache valid without network for this long; still refresh in background when stale.
+  /// Disk snapshot age before we prefer a network refresh (background when UI shows cached data).
   static const Duration maxAge = Duration(hours: 6);
 
   static Future<void> save(List<ProductModel> products) async {

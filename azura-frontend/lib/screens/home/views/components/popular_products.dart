@@ -29,7 +29,7 @@ class PopularProducts extends StatelessWidget {
         SizedBox(
           height: 220,
           child: FutureBuilder<List<ProductModel>>(
-            future: ApiService.getProducts(),
+            future: ApiService.getBrowseCatalog(),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 return ListView.builder(

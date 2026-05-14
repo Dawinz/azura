@@ -29,7 +29,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _fetchProducts();
   }
 
-  Future<void> _fetchProducts() async {
+  Future<void> _fetchProducts({bool forceRefresh = false}) async {
     setState(() {
       isLoading = true;
       error = '';
@@ -39,7 +39,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       if (widget.categoryId != null && widget.categoryId! > 0) {
         list = await ApiService.getProductsByCategory(widget.categoryId!, 1);
       } else {
-        list = await ApiService.getProducts();
+        list = await ApiService.getBrowseCatalog(forceRefresh: forceRefresh);
       }
       if (!mounted) return;
       setState(() {
@@ -102,7 +102,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       const SizedBox(height: defaultPadding * 2),
                       Center(
                         child: FilledButton.icon(
-                          onPressed: _fetchProducts,
+                          onPressed: () => _fetchProducts(forceRefresh: true),
                           icon: const Icon(Icons.refresh),
                           label: const Text('Try again'),
                         ),
