@@ -1,77 +1,113 @@
 import 'package:flutter/material.dart';
+import 'package:shop/api/api_service.dart';
 import 'package:shop/components/order_card.dart';
 import 'package:shop/constants.dart';
 import 'package:shop/models/order_model.dart';
-import 'package:shop/models/product_model.dart';
+import 'package:shop/route/route_constants.dart';
+import 'package:shop/services/storage_service.dart';
 
-// This is a demo order list. You need to replace it with your own data.
-final List<OrderModel> demoOrders = [
-  OrderModel(
-    id: "#343ff",
-    date: "12/12/2022",
-    items: [
-      OrderItemModel(
-        product: ProductModel(
-          id: '1',
-          slug: "t-shirt",
-          title: "T-shirt",
-          price: 20,
-          image: "https://i.imgur.com/8JCRzZT.jpeg",
-          files: [],
-          productType: '',
-          listingType: '',
-          categoryId: '',
-          currency: '',
-          userId: '',
-          status: '',
-          isPromoted: '',
-          promoteStartDate: '',
-          promoteEndDate: '',
-          promotePlan: '',
-          promoteDay: '',
-          visibility: '',
-          rating: '',
-          externalLink: '',
-          filesIncluded: '',
-          shippingTime: '',
-          isSold: '',
-          isDeleted: '',
-          isDraft: '',
-          createdAt: '',
-          userUsername: '',
-          shopName: '',
-          userRole: '',
-          userSlug: '',
-          productUrl: '',
-        ),
-        quantity: 2,
-      ),
-    ],
-    total: 40,
-    status: "Processing",
-  )
-];
-
-class OrdersScreen extends StatelessWidget {
+class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
 
   @override
+  State<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends State<OrdersScreen> {
+  late Future<List<OrderModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<OrderModel>> _load() async {
+    final user = await StorageService.getUser();
+    final uid = int.tryParse(user?.id ?? '') ?? 0;
+    if (uid < 1) {
+      throw Exception('Please sign in to see your orders.');
+    }
+    return ApiService.getBuyerOrders(uid);
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _future = _load();
+    });
+    await _future;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Orders"),
+        title: const Text('My orders'),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(defaultPadding),
-        itemCount: demoOrders.length,
-        separatorBuilder: (context, index) =>
-            const SizedBox(height: defaultPadding),
-        itemBuilder: (context, index) {
-          return OrderCard(
-            order: demoOrders[index],
-            press: () {},
-          );
-        },
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        child: FutureBuilder<List<OrderModel>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  Center(child: CircularProgressIndicator()),
+                ],
+              );
+            }
+            if (snapshot.hasError) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(defaultPadding * 2),
+                children: [
+                  Text(
+                    snapshot.error.toString().replaceFirst('Exception: ', ''),
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ],
+              );
+            }
+            final orders = snapshot.data ?? [];
+            if (orders.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(defaultPadding * 2),
+                children: [
+                  Text(
+                    'No orders yet. Purchases you make in the app will show up here.',
+                    style: theme.textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+            }
+            return ListView.separated(
+              padding: const EdgeInsets.all(defaultPadding),
+              itemCount: orders.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: defaultPadding),
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return OrderCard(
+                  order: order,
+                  press: () {
+                    final n = order.orderNumber;
+                    if (n == null || n.isEmpty) return;
+                    Navigator.pushNamed(
+                      context,
+                      orderDetailsScreenRoute,
+                      arguments: n,
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

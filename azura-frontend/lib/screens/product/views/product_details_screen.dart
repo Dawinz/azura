@@ -204,6 +204,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       _display.isSold != '1',
                   price: _display.price,
                   currency: _display.currency,
+                  onReviewsTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      productReviewsScreenRoute,
+                      arguments: _display,
+                    );
+                  },
                 ),
                 const SliverToBoxAdapter(child: Divider(height: 1)),
                 SliverPadding(

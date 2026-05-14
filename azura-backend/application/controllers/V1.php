@@ -326,6 +326,7 @@ class V1 extends CI_Controller {
                 'id' => (int) $user->id,
                 'name' => $display_name,
                 'username' => (string) ($user->username ?? ''),
+                'slug' => (string) ($user->slug ?? ''),
                 'email' => (string) ($user->email ?? ''),
                 'first_name' => (string) ($user->first_name ?? ''),
                 'last_name' => (string) ($user->last_name ?? ''),

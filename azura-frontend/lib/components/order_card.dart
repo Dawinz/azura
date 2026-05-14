@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../constants.dart';
+import '../../core/market_format.dart';
 import '../../models/order_model.dart';
 
 class OrderCard extends StatelessWidget {
@@ -46,7 +47,7 @@ class OrderCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  "\$${order.total.toStringAsFixed(2)}",
+                  MarketFormat.formatAmount(order.total),
                   style: Theme.of(context).textTheme.titleSmall,
                 )
               ],
@@ -62,7 +63,9 @@ class OrderCard extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: order.items.isNotEmpty
-                        ? order.items[0].product.title
+                        ? (order.items.length > 1
+                            ? '${order.items[0].product.title} (+${order.items.length - 1} more)'
+                            : order.items[0].product.title)
                         : '',
                     style: const TextStyle(
                         fontWeight: FontWeight.w500, color: Colors.black87),

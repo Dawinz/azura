@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../constants.dart';
+import '../../../../core/market_format.dart';
 
 class WalletBalanceCard extends StatelessWidget {
   const WalletBalanceCard({
@@ -41,7 +42,7 @@ class WalletBalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: defaultPadding / 2),
                   Text(
-                    "\$${balance.toStringAsFixed(2)}",
+                    MarketFormat.formatAmount(balance),
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall!
@@ -62,7 +63,7 @@ class WalletBalanceCard extends StatelessWidget {
                 ),
               ),
             ),
-            child: const Text("+ Charge Balance"),
+            child: const Text('About balance'),
           )
         ],
       ),

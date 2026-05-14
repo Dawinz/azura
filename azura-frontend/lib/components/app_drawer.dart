@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shop/screens/my_shop/views/my_shop_screen.dart';
 import 'package:shop/screens/order/views/orders_screen.dart';
-// Import MyOrdersScreen
+import 'package:shop/screens/wallet/views/wallet_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -27,30 +28,29 @@ class AppDrawer extends StatelessWidget {
             leading: const Icon(Icons.wallet),
             title: const Text('Wallet'),
             onTap: () {
-              Navigator.pop(context); // Close the drawer
+              Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const OrdersScreen()),
+                MaterialPageRoute(builder: (context) => const WalletScreen()),
               );
             },
           ),
           ListTile(
             leading: const Icon(Icons.store),
-            title: const Text('My Shop'),
+            title: const Text('My shop'),
             onTap: () {
-              // TODO: Implement navigation to My Shop screen
-              Navigator.pop(context); // Close the drawer
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('My Shop screen not implemented yet')),
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyShopScreen()),
               );
             },
           ),
           ListTile(
             leading: const Icon(Icons.shopping_bag),
-            title: const Text('My Orders'),
+            title: const Text('My orders'),
             onTap: () {
-              Navigator.pop(context); // Close the drawer
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const OrdersScreen()),

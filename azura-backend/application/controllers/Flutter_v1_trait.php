@@ -1173,4 +1173,277 @@ trait Flutter_v1_trait {
             'message' => 'Promotion checkout is not wired for mobile API yet; use the website or admin.',
         )));
     }
+
+    /**
+     * GET /v1/wishlist/products?user_id=
+     * Product rows in the same shape as /v1/product/list for wishlisted items.
+     */
+    public function wishlist_products() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $uid = (int) $this->input->get('user_id');
+        if ($uid < 1) {
+            $this->output->set_output(json_encode(array('success' => true, 'data' => array())));
+            return;
+        }
+        $this->db->select('p.id');
+        $this->db->from('wishlist w');
+        $this->db->join('products p', 'p.id = w.product_id');
+        $this->db->where('w.user_id', $uid)->where('p.is_deleted', 0);
+        $ids = array();
+        foreach ($this->db->get()->result() as $r) {
+            $ids[] = (int) $r->id;
+        }
+        if (empty($ids)) {
+            $this->output->set_output(json_encode(array('success' => true, 'data' => array())));
+            return;
+        }
+        $lang_id = max(1, (int) ($this->input->get('lang_id') ?: 1));
+        $base_url = $this->config->item('base_url');
+        $this->db->select('p.id, p.category_id, p.slug, p.price, p.currency, p.discount_rate, p.user_id, p.rating, p.is_promoted, p.is_sold, p.created_at, p.product_type');
+        $this->db->select('(SELECT title FROM product_details WHERE product_id = p.id AND lang_id = ' . $lang_id . ' LIMIT 1) AS title');
+        $this->db->select('(SELECT image_small FROM images WHERE product_id = p.id AND is_main = 1 LIMIT 1) AS image');
+        $this->db->from('products p');
+        $this->db->where_in('p.id', $ids);
+        $this->db->where('p.is_deleted', 0);
+        $this->db->where('p.product_type', 'physical');
+        $query = $this->db->get();
+        $list = array();
+        foreach ($query->result() as $row) {
+            $img = isset($row->image) ? $row->image : null;
+            $image_url = null;
+            if (!empty($img)) {
+                $img = trim((string) $img);
+                $image_url = preg_match('#^https?://#i', $img) ? $img : $base_url . $img;
+            }
+            $list[] = array(
+                'id' => (int) $row->id,
+                'category_id' => isset($row->category_id) ? (int) $row->category_id : 0,
+                'title' => $row->title ?: '',
+                'slug' => $row->slug ?: '',
+                'price' => (int) $row->price,
+                'currency' => $row->currency ?: '',
+                'discount_rate' => (int) $row->discount_rate,
+                'user_id' => (int) $row->user_id,
+                'rating' => $row->rating ?: '0',
+                'is_promoted' => (int) $row->is_promoted,
+                'is_sold' => (int) $row->is_sold,
+                'product_type' => isset($row->product_type) ? (string) $row->product_type : 'physical',
+                'image' => $image_url,
+                'created_at' => $row->created_at,
+            );
+        }
+        $this->output->set_output(json_encode(array('success' => true, 'data' => $list)));
+    }
+
+    /** GET /v1/buyer/orders?user_id=&limit= */
+    public function buyer_orders() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $uid = (int) $this->input->get('user_id');
+        $limit = min(50, max(1, (int) ($this->input->get('limit') ?: 30)));
+        if ($uid < 1) {
+            $this->output->set_output(json_encode(array('success' => true, 'data' => array())));
+            return;
+        }
+        $this->db->where('buyer_id', $uid)->order_by('created_at', 'DESC')->limit($limit);
+        $orders = $this->db->get('orders')->result();
+        $out = array();
+        foreach ($orders as $o) {
+            $ops = $this->db->get_where('order_products', array('order_id' => (int) $o->id))->result();
+            $items = array();
+            foreach ($ops as $op) {
+                $items[] = array(
+                    'product_id' => (int) $op->product_id,
+                    'title' => $op->product_title,
+                    'slug' => $op->product_slug,
+                    'quantity' => (int) $op->product_quantity,
+                    'line_total_cents' => (int) $op->product_total_price,
+                    'currency' => $op->product_currency,
+                    'line_status' => $op->order_status,
+                );
+            }
+            $out[] = array(
+                'order_number' => (string) $o->order_number,
+                'created_at' => $o->created_at,
+                'price_total' => $o->price_total,
+                'price_currency' => $o->price_currency,
+                'status' => (int) $o->status,
+                'payment_status' => $o->payment_status,
+                'items' => $items,
+            );
+        }
+        $this->output->set_output(json_encode(array('success' => true, 'data' => $out)));
+    }
+
+    /** GET /v1/buyer/order?user_id=&order_number= */
+    public function buyer_order() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $uid = (int) $this->input->get('user_id');
+        $on = trim((string) $this->input->get('order_number', true));
+        if ($uid < 1 || $on === '') {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'user_id and order_number required')));
+            return;
+        }
+        $this->db->where('order_number', $on)->where('buyer_id', $uid)->limit(1);
+        $order = $this->db->get('orders')->row();
+        if (empty($order)) {
+            $this->output->set_status_header(404);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'Order not found')));
+            return;
+        }
+        $ops = $this->db->get_where('order_products', array('order_id' => (int) $order->id))->result();
+        $items = array();
+        foreach ($ops as $op) {
+            $items[] = array(
+                'product_id' => (int) $op->product_id,
+                'title' => $op->product_title,
+                'slug' => $op->product_slug,
+                'quantity' => (int) $op->product_quantity,
+                'unit_price_cents' => (int) $op->product_unit_price,
+                'line_total_cents' => (int) $op->product_total_price,
+                'currency' => $op->product_currency,
+                'line_status' => $op->order_status,
+            );
+        }
+        $ship = $this->db->get_where('order_shipping', array('order_id' => (int) $order->id), 1, 0)->row();
+        $shipping = $ship ? array(
+            'shipping_first_name' => $ship->shipping_first_name,
+            'shipping_last_name' => $ship->shipping_last_name,
+            'shipping_email' => $ship->shipping_email,
+            'shipping_phone_number' => $ship->shipping_phone_number,
+            'shipping_address' => $ship->shipping_address,
+            'shipping_country' => $ship->shipping_country,
+            'shipping_state' => $ship->shipping_state,
+            'shipping_city' => $ship->shipping_city,
+            'shipping_zip_code' => $ship->shipping_zip_code,
+        ) : null;
+        $this->output->set_output(json_encode(array(
+            'success' => true,
+            'order' => array(
+                'order_number' => (string) $order->order_number,
+                'created_at' => $order->created_at,
+                'price_subtotal' => $order->price_subtotal,
+                'price_vat' => (int) $order->price_vat,
+                'price_shipping' => $order->price_shipping,
+                'price_total' => $order->price_total,
+                'price_currency' => $order->price_currency,
+                'status' => (int) $order->status,
+                'payment_status' => $order->payment_status,
+                'payment_method' => $order->payment_method,
+            ),
+            'items' => $items,
+            'shipping' => $shipping,
+        )));
+    }
+
+    /** GET /v1/wallet/summary?user_id= — seller balance + recent earnings/payouts */
+    public function wallet_summary() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $uid = (int) $this->input->get('user_id');
+        $u = $this->_flutter_user_by_id($uid);
+        if (empty($u)) {
+            $this->output->set_status_header(404);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'User not found')));
+            return;
+        }
+        $balance = isset($u->balance) ? (int) $u->balance : 0;
+        $history = array();
+        $this->db->from('earnings');
+        $this->db->where('user_id', $uid);
+        $this->db->order_by('created_at', 'DESC');
+        $this->db->limit(25);
+        foreach ($this->db->get()->result() as $e) {
+            $history[] = array(
+                'type' => 'earning',
+                'label' => 'Sale — order #' . (string) $e->order_number,
+                'amount_cents' => (int) $e->earned_amount,
+                'currency' => $e->currency,
+                'created_at' => $e->created_at,
+            );
+        }
+        $this->db->reset_query();
+        $this->db->from('payouts');
+        $this->db->where('user_id', $uid);
+        $this->db->order_by('created_at', 'DESC');
+        $this->db->limit(25);
+        foreach ($this->db->get()->result() as $p) {
+            $history[] = array(
+                'type' => 'payout',
+                'label' => 'Payout (' . ($p->payout_method ?: 'request') . ')',
+                'amount_cents' => -1 * abs((int) $p->amount),
+                'currency' => $p->currency,
+                'created_at' => $p->created_at,
+            );
+        }
+        $this->db->reset_query();
+        usort($history, function ($a, $b) {
+            return strcmp((string) $b['created_at'], (string) $a['created_at']);
+        });
+        $history = array_slice($history, 0, 40);
+        $defCur = 'TZS';
+        foreach ($history as $h) {
+            if (!empty($h['currency'])) {
+                $defCur = (string) $h['currency'];
+                break;
+            }
+        }
+        $this->output->set_output(json_encode(array(
+            'success' => true,
+            'balance_cents' => $balance,
+            'currency' => $defCur,
+            'history' => $history,
+        )));
+    }
+
+    /** GET /v1/notifications?user_id= — lightweight feed from recent orders */
+    public function notifications_feed() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $uid = (int) $this->input->get('user_id');
+        $items = array();
+        if ($uid > 0) {
+            $this->db->where('buyer_id', $uid)->order_by('created_at', 'DESC')->limit(12);
+            foreach ($this->db->get('orders')->result() as $o) {
+                $items[] = array(
+                    'title' => 'Order #' . (string) $o->order_number,
+                    'body' => 'Payment: ' . (string) $o->payment_status . ' · Total ' . (string) $o->price_total . ' ' . (string) $o->price_currency,
+                    'time' => $o->created_at,
+                    'kind' => 'order',
+                );
+            }
+        }
+        $this->output->set_output(json_encode(array('success' => true, 'data' => $items)));
+    }
+
+    /** GET /v1/product/reviews?product_id= */
+    public function product_reviews_list() {
+        $this->output->set_content_type('application/json');
+        $this->_set_cors_headers();
+        $pid = (int) $this->input->get('product_id');
+        if ($pid < 1) {
+            $this->output->set_status_header(400);
+            $this->output->set_output(json_encode(array('success' => false, 'error' => 'product_id required')));
+            return;
+        }
+        $this->db->select('r.id, r.rating, r.review, r.created_at, u.username');
+        $this->db->from('reviews r');
+        $this->db->join('users u', 'u.id = r.user_id', 'left');
+        $this->db->where('r.product_id', $pid)->order_by('r.id', 'DESC')->limit(50);
+        $rows = $this->db->get()->result();
+        $list = array();
+        foreach ($rows as $r) {
+            $list[] = array(
+                'id' => (int) $r->id,
+                'rating' => (int) $r->rating,
+                'review' => $r->review,
+                'created_at' => $r->created_at,
+                'username' => $r->username,
+            );
+        }
+        $this->output->set_output(json_encode(array('success' => true, 'data' => $list)));
+    }
 }

@@ -132,11 +132,27 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       );
     case productReviewsScreenRoute:
       return MaterialPageRoute(
-        builder: (context) => const ProductReviewsScreen(),
+        builder: (context) {
+          final args = settings.arguments;
+          final product = args is ProductModel ? args : null;
+          return ProductReviewsScreen(product: product);
+        },
       );
     case productListScreenRoute:
       return MaterialPageRoute(
-        builder: (context) => const ProductListScreen(),
+        builder: (context) {
+          final args = settings.arguments;
+          if (args is Map) {
+            final cid = args['categoryId'];
+            final title = args['title']?.toString();
+            final id = cid is int ? cid : int.tryParse('$cid');
+            return ProductListScreen(
+              categoryId: id != null && id > 0 ? id : null,
+              title: title,
+            );
+          }
+          return const ProductListScreen();
+        },
       );
     // case addReviewsScreenRoute:
     //   return MaterialPageRoute(
@@ -250,10 +266,16 @@ Route<dynamic> generateRoute(RouteSettings settings) {
     //   return MaterialPageRoute(
     //     builder: (context) => const OrderProcessingScreen(),
     //   );
-    // case orderDetailsScreenRoute:
-    //   return MaterialPageRoute(
-    //     builder: (context) => const OrderDetailsScreen(),
-    //   );
+    case orderDetailsScreenRoute:
+      return MaterialPageRoute(
+        builder: (context) {
+          final n = settings.arguments as String?;
+          if (n == null || n.isEmpty) {
+            return const NotFoundScreen();
+          }
+          return OrderDetailScreen(orderNumber: n);
+        },
+      );
     // case cancleOrderScreenRoute:
     //   return MaterialPageRoute(
     //     builder: (context) => const CancleOrderScreen(),

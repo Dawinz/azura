@@ -17,6 +17,7 @@ class ProductInfo extends StatelessWidget {
     this.currency,
     this.productCondition,
     this.price,
+    this.onReviewsTap,
   });
 
   final String title, brand;
@@ -27,6 +28,7 @@ class ProductInfo extends StatelessWidget {
   final String? currency;
   final String? productCondition;
   final double? price;
+  final VoidCallback? onReviewsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -58,13 +60,38 @@ class ProductInfo extends StatelessWidget {
               children: [
                 ProductAvailabilityTag(isAvailable: isAvailable),
                 const Spacer(),
-                SvgPicture.asset("assets/icons/Star_filled.svg"),
-                const SizedBox(width: defaultPadding / 4),
-                Text(
-                  "$rating ",
-                  style: Theme.of(context).textTheme.bodyLarge,
+                InkWell(
+                  onTap: onReviewsTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset('assets/icons/Star_filled.svg'),
+                        const SizedBox(width: defaultPadding / 4),
+                        Text(
+                          '$rating ',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        Text(
+                          '($numOfReviews)',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        if (onReviewsTap != null) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.reviews_outlined,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-                Text("($numOfReviews Reviews)")
               ],
             ),
             const SizedBox(height: defaultPadding),

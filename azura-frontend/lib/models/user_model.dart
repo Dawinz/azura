@@ -6,6 +6,9 @@ class UserModel {
   final String email;
   final String? avatar;
   final String? token;
+  /// Public shop profile slug (from login or settings).
+  final String? slug;
+  final String? username;
 
   UserModel({
     required this.id,
@@ -13,6 +16,8 @@ class UserModel {
     required this.email,
     this.avatar,
     this.token,
+    this.slug,
+    this.username,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,6 +27,8 @@ class UserModel {
       'email': email,
       'avatar': avatar,
       'token': token,
+      'slug': slug,
+      'username': username,
     };
   }
 
@@ -34,6 +41,8 @@ class UserModel {
       email: map['email']?.toString() ?? '',
       avatar: map['avatar']?.toString(),
       token: map['token']?.toString(),
+      slug: map['slug']?.toString(),
+      username: username,
     );
   }
 

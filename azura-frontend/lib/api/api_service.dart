@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shop/core/app_config.dart';
 import 'package:shop/models/category_model.dart';
+import 'package:shop/models/order_model.dart';
 import 'package:shop/models/product_model.dart';
 import 'package:shop/models/user_model.dart';
 import 'package:shop/services/catalog_cache_service.dart';
@@ -73,6 +74,17 @@ class ApiService {
 
   static const Duration _httpTimeout = Duration(seconds: 25);
 
+  /// Last successful browse-catalog snapshot (from network or disk). Avoids duplicate requests
+  /// when multiple widgets ask for the same list within a short window.
+  static List<ProductModel>? _catalogMemory;
+  static DateTime? _catalogMemoryAt;
+  static Future<List<ProductModel>>? _catalogInFlight;
+
+  /// Skip new network/disk work if the last resolved catalog is younger than this.
+  static const Duration _catalogMemoryTtl = Duration(minutes: 3);
+
+  /// Direct `GET /v1/product/list`. Prefer [getBrowseCatalog] for any UI list so calls are
+  /// deduplicated, memory-cached for a few minutes, and persisted between launches.
   static Future<List<ProductModel>> getProducts() async {
     try {
       final response = await http
@@ -114,18 +126,55 @@ class ApiService {
     }
   }
 
-  /// Product grid (Bookmark, etc.): reads [CatalogCacheService] first so the app
-  /// does not hit the network on every cold start. Use [forceRefresh] after pull-to-refresh.
+  /// Product grid for home, discover, bookmark, search, etc.
+  ///
+  /// Data always originates from the backend (via HTTP or a persisted snapshot of it).
+  /// This method **coalesces** concurrent calls, reuses a **short in-memory TTL** so navigating
+  /// between screens does not refetch every few seconds, and uses **disk cache** between sessions.
+  /// Use [forceRefresh] for pull-to-refresh or when the user explicitly needs the latest list.
   static Future<List<ProductModel>> getBrowseCatalog({
     bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh &&
+        _catalogMemory != null &&
+        _catalogMemory!.isNotEmpty &&
+        _catalogMemoryAt != null &&
+        DateTime.now().difference(_catalogMemoryAt!) < _catalogMemoryTtl) {
+      return List<ProductModel>.from(_catalogMemory!);
+    }
+
+    if (!forceRefresh && _catalogInFlight != null) {
+      return List<ProductModel>.from(await _catalogInFlight!);
+    }
+
+    final future = _resolveBrowseCatalog(forceRefresh: forceRefresh);
+    if (!forceRefresh) {
+      _catalogInFlight = future;
+    }
+    try {
+      return await future;
+    } finally {
+      if (!forceRefresh && identical(_catalogInFlight, future)) {
+        _catalogInFlight = null;
+      }
+    }
+  }
+
+  static Future<List<ProductModel>> _resolveBrowseCatalog({
+    required bool forceRefresh,
   }) async {
     if (!forceRefresh) {
       final cached = await CatalogCacheService.load();
       if (cached != null && cached.isNotEmpty) {
-        if (!await CatalogCacheService.isFresh()) {
-          _scheduleBrowseCatalogRefresh();
+        final list = _appStoreCatalogOnly(cached);
+        if (list.isNotEmpty) {
+          _catalogMemory = list;
+          _catalogMemoryAt = DateTime.now();
+          if (!await CatalogCacheService.isFresh()) {
+            _scheduleBrowseCatalogRefresh();
+          }
+          return List<ProductModel>.from(list);
         }
-        return _appStoreCatalogOnly(cached);
       }
     }
 
@@ -133,53 +182,27 @@ class ApiService {
     if (list.isNotEmpty) {
       await CatalogCacheService.save(list);
     }
-    return list;
+    _catalogMemory = list;
+    _catalogMemoryAt = DateTime.now();
+    return List<ProductModel>.from(list);
   }
 
   static void _scheduleBrowseCatalogRefresh() {
     Future<void>(() async {
       try {
         final list = await getProducts();
-        if (list.isNotEmpty) await CatalogCacheService.save(list);
+        if (list.isNotEmpty) {
+          await CatalogCacheService.save(list);
+          _catalogMemory = List<ProductModel>.from(list);
+          _catalogMemoryAt = DateTime.now();
+        }
       } catch (_) {}
     });
   }
 
+  /// Same catalog as [getBrowseCatalog] (shared cache / coalescing); avoids a second HTTP stack on home.
   static Future<List<ProductModel>> getMostPopularProducts() async {
-    try {
-      final response = await http.get(Uri.parse('$_baseUrl/v1/product/list'));
-      if (response.statusCode == 200) {
-        // Check if response is JSON before parsing
-        final contentType = response.headers['content-type'] ?? '';
-        if (!contentType.contains('application/json')) {
-          throw Exception('Invalid response format from server');
-        }
-        try {
-          final responseData =
-              json.decode(response.body) as Map<String, dynamic>;
-          final rawList = _productListPayload(responseData['data']);
-          final mapped = rawList.map((e) {
-            if (e is! Map) {
-              throw const FormatException('Invalid product row');
-            }
-            return _productModelFromListItem(Map<String, dynamic>.from(e));
-          }).toList();
-          return _appStoreCatalogOnly(mapped);
-        } catch (e) {
-          throw Exception('Failed to parse products response: ${e.toString()}');
-        }
-      } else {
-        throw Exception(
-            'Failed to load products (Status: ${response.statusCode})');
-      }
-    } catch (e) {
-      if (e.toString().contains('502') ||
-          e.toString().contains('Bad Gateway')) {
-        throw Exception(
-            'Backend server is temporarily unavailable. Please try again.');
-      }
-      rethrow;
-    }
+    return getBrowseCatalog();
   }
 
   /// Same-category slice when [categoryId] is set (matches storefront category browsing); otherwise general catalog.
@@ -194,7 +217,7 @@ class ApiService {
       if (cid > 0) {
         list = await getProductsByCategory(cid, 1);
       } else {
-        list = await getProducts();
+        list = await getBrowseCatalog();
       }
       return _appStoreCatalogOnly(list)
           .where((p) => p.slug.isNotEmpty && p.slug != slug)
@@ -1063,6 +1086,157 @@ class ApiService {
     }
   }
 
+  /// GET /v1/wishlist/products — wishlist rows as product summaries.
+  static Future<List<ProductModel>> getWishlistProducts(int userId) async {
+    final uri = Uri.parse('$_baseUrl/v1/wishlist/products?user_id=$userId');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load wishlist');
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => _productModelFromListItem(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// GET /v1/buyer/orders
+  static Future<List<OrderModel>> getBuyerOrders(int userId) async {
+    final uri = Uri.parse('$_baseUrl/v1/buyer/orders?user_id=$userId&limit=40');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load orders');
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => OrderModel.fromBuyerOrdersJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// GET /v1/buyer/order
+  static Future<Map<String, dynamic>> getBuyerOrderDetail({
+    required int userId,
+    required String orderNumber,
+  }) async {
+    final uri = Uri.parse(
+      '$_baseUrl/v1/buyer/order?user_id=$userId&order_number=${Uri.encodeComponent(orderNumber)}',
+    );
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load order');
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Invalid order response');
+    }
+    if (decoded['success'] != true) {
+      throw Exception(decoded['error']?.toString() ?? 'Order not found');
+    }
+    return decoded;
+  }
+
+  /// GET /v1/wallet/summary
+  static Future<WalletSummary> getWalletSummary(int userId) async {
+    final uri = Uri.parse('$_baseUrl/v1/wallet/summary?user_id=$userId');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      throw Exception('Could not load wallet');
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      throw Exception(decoded['error']?.toString() ?? 'Wallet unavailable');
+    }
+    final hist = decoded['history'];
+    final List<WalletHistoryLine> lines = [];
+    if (hist is List) {
+      for (final e in hist) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        lines.add(WalletHistoryLine(
+          type: m['type']?.toString() ?? '',
+          label: m['label']?.toString() ?? '',
+          amountCents: (m['amount_cents'] is int)
+              ? m['amount_cents'] as int
+              : int.tryParse('${m['amount_cents'] ?? 0}') ?? 0,
+          currency: m['currency']?.toString() ?? 'TZS',
+          createdAt: m['created_at']?.toString() ?? '',
+        ));
+      }
+    }
+    final bal = decoded['balance_cents'];
+    final balanceCents = bal is int
+        ? bal
+        : int.tryParse('${bal ?? 0}') ?? 0;
+    return WalletSummary(
+      balanceCents: balanceCents,
+      currency: decoded['currency']?.toString() ?? 'TZS',
+      history: lines,
+    );
+  }
+
+  /// GET /v1/notifications
+  static Future<List<NotificationFeedItem>> getNotificationsFeed(
+      int userId) async {
+    final uri = Uri.parse('$_baseUrl/v1/notifications?user_id=$userId');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      return [];
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => NotificationFeedItem(
+              title: e['title']?.toString() ?? '',
+              body: e['body']?.toString() ?? '',
+              time: e['time']?.toString() ?? '',
+            ))
+        .toList();
+  }
+
+  /// GET /v1/product/reviews
+  static Future<List<ProductReviewItem>> getProductReviews(int productId) async {
+    final uri =
+        Uri.parse('$_baseUrl/v1/product/reviews?product_id=$productId');
+    final response = await http.get(uri).timeout(_httpTimeout);
+    if (response.statusCode != 200) {
+      return [];
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      return [];
+    }
+    final data = decoded['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => ProductReviewItem(
+              id: (e['id'] is int) ? e['id'] as int : int.tryParse('${e['id']}') ?? 0,
+              rating: (e['rating'] is int)
+                  ? e['rating'] as int
+                  : int.tryParse('${e['rating'] ?? 0}') ?? 0,
+              review: e['review']?.toString() ?? '',
+              createdAt: e['created_at']?.toString() ?? '',
+              username: e['username']?.toString() ?? '',
+            ))
+        .toList();
+  }
+
   // Promote
   static Future<List<dynamic>> getPromotionPlans() async {
     final String getPromotionPlansUrl = '$_baseUrl/v1/promote/plan';
@@ -1205,4 +1379,61 @@ class SelcomCheckoutInitResult {
 
   final String paymentGatewayUrl;
   final String orderToken;
+}
+
+/// GET /v1/wallet/summary
+class WalletSummary {
+  WalletSummary({
+    required this.balanceCents,
+    required this.currency,
+    required this.history,
+  });
+
+  final int balanceCents;
+  final String currency;
+  final List<WalletHistoryLine> history;
+}
+
+class WalletHistoryLine {
+  WalletHistoryLine({
+    required this.type,
+    required this.label,
+    required this.amountCents,
+    required this.currency,
+    required this.createdAt,
+  });
+
+  final String type;
+  final String label;
+  final int amountCents;
+  final String currency;
+  final String createdAt;
+}
+
+class NotificationFeedItem {
+  NotificationFeedItem({
+    required this.title,
+    required this.body,
+    required this.time,
+  });
+
+  final String title;
+  final String body;
+  final String time;
+}
+
+class ProductReviewItem {
+  ProductReviewItem({
+    required this.id,
+    required this.rating,
+    required this.review,
+    required this.createdAt,
+    required this.username,
+  });
+
+  final int id;
+  final int rating;
+  final String review;
+  final String createdAt;
+  final String username;
 }

@@ -31,7 +31,7 @@ class _EntryPointState extends State<EntryPoint> {
       case 1:
         return 'Discover';
       case 2:
-        return 'Bookmarks';
+        return 'Wishlist';
       case 3:
         return 'Cart';
       case 4:

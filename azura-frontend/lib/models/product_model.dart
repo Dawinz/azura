@@ -169,6 +169,42 @@ class ProductModel {
     );
   }
 
+  /// Line from buyer order API (minimal fields for order history UI).
+  factory ProductModel.fromOrderLine(Map<String, dynamic> json) {
+    return ProductModel(
+      id: json['product_id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Item',
+      slug: json['slug']?.toString() ?? '',
+      image: '',
+      productType: 'physical',
+      listingType: '',
+      categoryId: '0',
+      price: 0,
+      currency: json['currency']?.toString() ?? 'TZS',
+      userId: '0',
+      status: '1',
+      isPromoted: '0',
+      promoteStartDate: '',
+      promoteEndDate: '',
+      promotePlan: '',
+      promoteDay: '',
+      visibility: '1',
+      rating: '0',
+      externalLink: '',
+      filesIncluded: '',
+      shippingTime: '',
+      isSold: '0',
+      isDeleted: '0',
+      isDraft: '0',
+      createdAt: '',
+      userUsername: '',
+      shopName: '',
+      userRole: '',
+      userSlug: '',
+      productUrl: '',
+    );
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final List<String> files = [];
     final rawFiles = json['files'];
