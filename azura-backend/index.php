@@ -125,6 +125,23 @@ function open_api_mysqli_connection($db_host, $db_user, $db_pass, $db_name, $db_
     return null;
 }
 
+/**
+ * Categories hidden from GET /v1/category/list (slug or display name).
+ * Must stay in sync with V1::_v1_category_is_hidden (this route is handled in index.php before CI loads).
+ */
+function azura_api_v1_category_is_hidden($slug, $name) {
+    $slug = strtolower(trim((string) $slug));
+    $name = strtolower(trim((string) $name));
+    $pat = '(shoes|abaya|shirts|khanzu|kanzu)';
+    if ($slug !== '' && preg_match('/(^|-)' . $pat . '(-|$)/', $slug)) {
+        return true;
+    }
+    if ($name !== '' && preg_match('/^' . $pat . '(\s|[-_.\/,]|$)/u', $name)) {
+        return true;
+    }
+    return false;
+}
+
 // Check if this is an API request
 $is_api_request = (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/v1/') !== false) || isset($_GET['demo_action']);
 
@@ -195,6 +212,9 @@ if ($is_api_request) {
             $res = $stmt->get_result();
             $rows = array();
             while ($res && ($r = $res->fetch_assoc())) {
+                if (azura_api_v1_category_is_hidden((string) ($r['slug'] ?? ''), (string) ($r['name'] ?? ''))) {
+                    continue;
+                }
                 $rows[] = array(
                     'id' => (int) ($r['id'] ?? 0),
                     'name' => (string) ($r['name'] ?? ''),

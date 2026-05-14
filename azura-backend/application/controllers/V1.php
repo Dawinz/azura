@@ -98,6 +98,7 @@ class V1 extends CI_Controller {
 
     /**
      * Categories removed from mobile Discover / v1/category/list (slug or display name).
+     * GET /v1/category/list is also served early from index.php — keep rules aligned with azura_api_v1_category_is_hidden().
      */
     private function _v1_category_is_hidden($slug, $name) {
         $slug = strtolower(trim((string) $slug));
