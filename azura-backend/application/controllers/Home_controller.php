@@ -80,8 +80,8 @@ class Home_controller extends Home_Core_Controller
     {
         get_method();
         $data['title'] = 'Support';
-        $data['description'] = 'Azura app support and customer care contacts - ' . $this->app_name;
-        $data['keywords'] = 'support,help,customer care,contact,' . $this->app_name;
+        $data['description'] = 'Help center for ' . $this->app_name . ': contact options, orders and delivery, payments, account help, refunds, FAQs, and mobile app support.';
+        $data['keywords'] = 'support,help,FAQ,customer care,orders,delivery,refunds,contact,' . $this->app_name;
         $this->load->view('partials/_header', $data);
         $this->load->view('support');
         $this->load->view('partials/_footer');
