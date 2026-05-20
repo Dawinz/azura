@@ -1,0 +1,41 @@
+# Keeps github.com/Dawinz/azura-frontend in sync with azura-frontend/ in this monorepo.
+# Add repository secret FRONTEND_MIRROR_TOKEN (fine-grained PAT with contents:write on azura-frontend).
+
+name: Sync azura-frontend mirror
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'azura-frontend/**'
+      - '.github/workflows/sync-frontend-mirror.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push azura-frontend subtree to mirror
+        env:
+          FRONTEND_MIRROR_TOKEN: ${{ secrets.FRONTEND_MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FRONTEND_MIRROR_TOKEN:-}" ]; then
+            echo "Skip: FRONTEND_MIRROR_TOKEN not set in repository secrets."
+            echo "Codemagic can use https://github.com/Dawinz/azura instead (see /codemagic.yaml)."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add mirror "https://x-access-token:${FRONTEND_MIRROR_TOKEN}@github.com/Dawinz/azura-frontend.git" 2>/dev/null || \
+            git remote set-url mirror "https://x-access-token:${FRONTEND_MIRROR_TOKEN}@github.com/Dawinz/azura-frontend.git"
+          SPLIT=$(git subtree split --prefix=azura-frontend)
+          git push mirror "${SPLIT}:main" --force

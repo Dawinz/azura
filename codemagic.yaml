@@ -1,14 +1,17 @@
-# Codemagic workflow when this folder is the repository root (legacy mirror: Dawinz/azura-frontend).
-# Canonical source is the monorepo: github.com/Dawinz/azura — use /codemagic.yaml there with
-# working_directory: azura-frontend. Mirror sync: .github/workflows/sync-frontend-mirror.yml
+# Monorepo entry for Codemagic (canonical repo: github.com/Dawinz/azura).
+# In Codemagic → Application settings → Repository URL, use:
+#   https://github.com/Dawinz/azura
+# Flutter project lives in azura-frontend/ (not the legacy azura-frontend-only mirror).
 #
-# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app
+# If your app still points at github.com/Dawinz/azura-frontend, either switch to this repo
+# or enable .github/workflows/sync-frontend-mirror.yml so the mirror stays in sync.
 
 workflows:
   ios-azura:
     name: Azura iOS (IPA → App Store)
+    working_directory: azura-frontend
     max_build_duration: 120
-    instance_type: mac_mini_m2  # Required for iOS builds
+    instance_type: mac_mini_m2
 
     integrations:
       app_store_connect: applestoreconnectkey
@@ -16,11 +19,11 @@ workflows:
     environment:
       flutter: stable
       ios_signing:
-        distribution_type: app_store  # For TestFlight & App Store
-        bundle_identifier: com.azura.azuramall  # App Store bundle ID
-      # Override in Codemagic UI if Railway URL changes (must match lib/core/app_config.dart default).
+        distribution_type: app_store
+        bundle_identifier: com.azura.azuramall
       vars:
         API_BASE_URL: "https://azuramall.shop"
+
     scripts:
       - name: Set up code signing
         script: |
@@ -33,7 +36,6 @@ workflows:
           find . -name "Podfile" -execdir pod install \;
       - name: Flutter build IPA
         script: |
-          # Use Codemagic's BUILD_NUMBER if set, otherwise default to 1.
           BUILD_NUMBER=${BUILD_NUMBER:-1}
           flutter build ipa --release \
             --build-name=1.0.$BUILD_NUMBER \
