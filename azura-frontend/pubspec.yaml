@@ -3,7 +3,7 @@ description: FlutterShop is a premium E-commerce UI kit that you can use to buil
 
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.0+19
 
 flutter_launcher_icons:
   android: true
@@ -62,7 +62,6 @@ flutter:
     - assets/flags/
     - assets/logo/
     - assets/branding/
-    - assets/screens/
 
   fonts:
     - family: Plus Jakarta

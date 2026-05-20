@@ -1117,9 +1117,8 @@ class ApiService {
     if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
       return [];
     }
-    final data = decoded['data'];
-    if (data is! List) return [];
-    return data
+    final rows = _productListPayload(decoded['data']);
+    return rows
         .whereType<Map>()
         .map((e) => _productModelFromListItem(Map<String, dynamic>.from(e)))
         .toList();
@@ -1255,47 +1254,6 @@ class ApiService {
               username: e['username']?.toString() ?? '',
             ))
         .toList();
-  }
-
-  // Promote
-  static Future<List<dynamic>> getPromotionPlans() async {
-    final String getPromotionPlansUrl = '$_baseUrl/v1/promote/plan';
-    final response = await http.get(Uri.parse(getPromotionPlansUrl));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data;
-    } else {
-      throw Exception('Failed to get promotion plans');
-    }
-  }
-
-  static Future<dynamic> startPromotionPayment(
-    int productId,
-    String plan,
-    int duration,
-    String buyerName,
-    String email,
-    String phone,
-  ) async {
-    final String startPromotionPaymentUrl = '$_baseUrl/api/v1/promote/plan';
-    final response = await http.post(
-      Uri.parse(startPromotionPaymentUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'product_id': productId,
-        'plan': plan,
-        'duration': duration,
-        'buyer_name': buyerName,
-        'email': email,
-        'phone': phone,
-      }),
-    );
-    if (response.statusCode == 200) {
-      final dynamic data = json.decode(response.body);
-      return data;
-    } else {
-      throw Exception('Failed to start promotion payment');
-    }
   }
 
   /// GET /v1/location/countries

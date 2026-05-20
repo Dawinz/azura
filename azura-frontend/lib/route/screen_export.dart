@@ -25,7 +25,6 @@ export '../screens/notification/view/notificatios_screen.dart';
 export '../screens/order/views/order_detail_screen.dart';
 export '../screens/order/views/orders_screen.dart';
 export '../screens/preferences/views/preferences_screen.dart';
-export '../screens/wallet/views/empty_wallet_screen.dart';
 export '../screens/wallet/views/wallet_screen.dart';
 export '../screens/profile/views/profile_screen.dart';
 export '../screens/user_info/views/user_info_screen.dart';

@@ -112,7 +112,7 @@ class ProductCard extends StatelessWidget {
                       content: Text(
                         ok
                             ? 'Added to cart'
-                            : 'This item is not available for purchase in the app. Use azuramall.shop in a browser.',
+                            : 'This item is not available for purchase in the app.',
                       ),
                       behavior: SnackBarBehavior.floating,
                     ),
