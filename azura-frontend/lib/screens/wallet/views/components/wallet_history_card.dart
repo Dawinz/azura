@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shop/components/product/secondary_product_card.dart';
 import 'package:shop/models/product_model.dart';
-import 'package:shop/route/route_constants.dart';
+import 'package:shop/screens/details/details_screen.dart';
 
 import '../../../../constants.dart';
 
@@ -70,10 +70,12 @@ class WalletHistoryCard extends StatelessWidget {
               child: SecondaryProductCard(
                 product: products[index],
                 press: () {
-                  Navigator.pushNamed(
+                  Navigator.push(
                     context,
-                    productDetailsScreenRoute,
-                    arguments: products[index],
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          DetailsScreen(product: products[index]),
+                    ),
                   );
                 },
               ),

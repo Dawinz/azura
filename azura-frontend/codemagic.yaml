@@ -1,8 +1,8 @@
-# Codemagic workflow when this folder is the repository root (legacy mirror: Dawinz/azura-frontend).
-# Canonical source is the monorepo: github.com/Dawinz/azura — use /codemagic.yaml there with
-# working_directory: azura-frontend. Mirror sync: .github/workflows/sync-frontend-mirror.yml
-#
+# Codemagic workflow: build iOS IPA and publish to App Store Connect (TestFlight / App Store)
 # Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app
+# App Store Connect: https://docs.codemagic.io/yaml-publishing/app-store-connect/
+#
+# Apple integration label in Codemagic must match exactly (see CODEMAGIC_MOBILE_STORE_GUIDE.md).
 
 workflows:
   ios-azura:
@@ -20,7 +20,7 @@ workflows:
         bundle_identifier: com.azura.azuramall  # App Store bundle ID
       # Override in Codemagic UI if Railway URL changes (must match lib/core/app_config.dart default).
       vars:
-        API_BASE_URL: "https://azuramall.shop"
+        API_BASE_URL: "https://azura-backend-production.up.railway.app"
     scripts:
       - name: Set up code signing
         script: |

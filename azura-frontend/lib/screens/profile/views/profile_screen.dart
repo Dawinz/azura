@@ -226,9 +226,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   ProfileMenu(
                     icon: Icons.settings,
-                    title: 'Account settings',
+                    title: 'Settings',
                     press: () {
-                      Navigator.pushNamed(context, userInfoScreenRoute);
+                      Navigator.pushNamed(context, preferencesScreenRoute);
                     },
                   ),
                   ProfileMenu(

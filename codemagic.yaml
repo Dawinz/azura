@@ -21,9 +21,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.azura.azuramall
-      vars:
-        API_BASE_URL: "https://azuramall.shop"
-
     scripts:
       - name: Set up code signing
         script: |
@@ -40,7 +37,6 @@ workflows:
           flutter build ipa --release \
             --build-name=1.0.$BUILD_NUMBER \
             --build-number=$BUILD_NUMBER \
-            --dart-define=API_BASE_URL="$API_BASE_URL" \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:

@@ -31,5 +31,5 @@ class AppTheme {
     );
   }
 
-  // Dark theme assets are optional; app ships light theme only.
+  // Dark theme is inclided in the Full template
 }

@@ -298,7 +298,7 @@ Route<dynamic> generateRoute(RouteSettings settings) {
     //   );
     case emptyWalletScreenRoute:
       return MaterialPageRoute(
-        builder: (context) => const WalletScreen(),
+        builder: (context) => const EmptyWalletScreen(),
       );
     case walletScreenRoute:
       return MaterialPageRoute(

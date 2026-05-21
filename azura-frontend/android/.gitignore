@@ -12,4 +12,3 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
-.upload_keystore_credentials_README.txt

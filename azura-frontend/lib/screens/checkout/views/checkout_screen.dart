@@ -352,7 +352,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         messenger.showSnackBar(
           const SnackBar(
             content: Text(
-              'Your cart contains items that cannot be purchased in the app. Remove them to continue.',
+              'Your cart contains items that cannot be purchased in the app. Remove them or shop on azuramall.shop in a browser.',
             ),
             behavior: SnackBarBehavior.floating,
           ),
